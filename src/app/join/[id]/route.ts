@@ -9,14 +9,17 @@ const RANK = { present: 3, late: 2, outside: 1 } as const;
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const url = new URL(req.url);
+  // ?json=1 = 미니앱 버튼용: 이동 대신 { url } 또는 { go } 로 돌려줌 (버튼이 텔레그램 밖에서 Zoom을 엶)
+  const json = url.searchParams.get("json") === "1";
+  const go = (path: string) => (json ? NextResponse.json({ go: path }) : NextResponse.redirect(new URL(path, url)));
   const me = await getMe();
-  if (!me) return NextResponse.redirect(new URL("/", url));
+  if (!me) return go("/");
   const { data: c } = await db().from("classes").select("id,name,days,start_time,minutes,tz,zoom_url,teacher_tg").eq("id", id).maybeSingle();
-  if (!c) return NextResponse.redirect(new URL("/home", url));
+  if (!c) return go("/home");
   const staff = me.role === "owner" || c.teacher_tg === me.tg_id;
   if (!staff) {
     const { data: e } = await db().from("enrollments").select("status").eq("class_id", id).eq("tg_id", me.tg_id).maybeSingle();
-    if (e?.status !== "active") return NextResponse.redirect(new URL("/home?m=not_active", url));
+    if (e?.status !== "active") return go("/home?m=not_active");
     const { date, state } = attendState(c);
     const now = new Date().toISOString();
     const { data: old } = await db().from("attendance").select("id,state,joins").eq("class_id", id).eq("tg_id", me.tg_id).eq("lesson_date", date).maybeSingle();
@@ -29,6 +32,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       await logEvent(me.tg_id, "join", id, `${c.name} · ${date} · ${state}`);
     }
   }
-  if (!c.zoom_url) return NextResponse.redirect(new URL(staff ? `/admin/class/${id}?m=no_zoom` : "/home?m=no_zoom", url));
-  return NextResponse.redirect(c.zoom_url);
+  if (!c.zoom_url) return go(staff ? `/admin/class/${id}?m=no_zoom` : "/home?m=no_zoom");
+  return json ? NextResponse.json({ url: c.zoom_url }) : NextResponse.redirect(c.zoom_url);
 }

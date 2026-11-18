@@ -1,3 +1,4 @@
+import JoinButton from "@/components/JoinButton";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/session";
@@ -62,7 +63,7 @@ export default async function ClassPage({ params, searchParams }: { params: Prom
         <p><Link href="/admin">← 관리 첫 화면</Link></p>
         <h1>{c.name} <span className="muted">{c.term ?? ""} · {c.days.map((d) => DAY_KO[d]).join("·")} {c.start_time?.slice(0, 5)}</span></h1>
         {m && MSG[m] && <div className={`notice ${MSG[m][1]}`}>{MSG[m][0]}</div>}
-        <p className="row"><a className="btn" href={`/join/${c.id}`} target="_blank">🎥 Zoom 열기 (대표·강사는 출석 기록 안 함)</a></p>
+        <p className="row"><JoinButton id={c.id} className="btn" label="🎥 Zoom 열기 (대표·강사는 출석 기록 안 함)" /></p>
 
         <h2>출석 (최근 4주 · {c.tz === "Asia/Seoul" ? "한국" : "현지"} 날짜)</h2>
         <p className="muted">✔ 출석 · △ 지각(시작 10분 뒤) · ✕ 안 들어옴 · ○ 수업 시간 밖에 들어옴 — [수업 들어가기]를 누른 기록 기준. 실제로 끝까지 있었는지는 Zoom 화면에서 강사가 확인.</p>

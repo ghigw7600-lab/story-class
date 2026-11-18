@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { t } from "@/lib/i18n";
 import { CLASS_COLS, type ClassRow, type Enrollment } from "@/lib/types";
 import { DAY_UZ, hhmm } from "@/lib/time";
+import JoinButton from "@/components/JoinButton";
 import { saveProfile, setLang, applyClass, uploadProof } from "./actions";
 
 const MSG: Record<string, { uz: string; ru: string; kind?: "ok" | "err" }> = {
@@ -90,7 +91,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
               <p className="muted">{t(L, "schedule")}: {sched(c, L)}</p>
               {e.status === "active" ? (
                 <>
-                  <a className="btn primary big" href={`/join/${c.id}`}>🎥 {t(L, "join")}</a>
+                  <JoinButton id={c.id} className="btn primary big" label={`🎥 ${t(L, "join")}`} />
                   <p className="muted" style={{ textAlign: "center" }}>{t(L, "join_hint")}</p>
                 </>
               ) : (
