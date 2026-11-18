@@ -1,7 +1,11 @@
-# STORY CONSULTING · TOPIK 온라인 수업 (story-class)
+# STORY Korean · TOPIK 온라인 수업 (story-class)
 
 우즈벡·키르기스 학생 대상 TOPIK 온라인 수업 홈페이지. 주소(예정): **class.storydesk.co.kr**. 설계 원본 = claude.ai 문서 "TOPIK 온라인 수업 플랫폼 1차 설계".
 **대표는 개발자가 아니다. 모든 답변·화면 문구(대표·강사용)·커밋 설명은 한국어로.** 학생 화면은 우즈벡어(라틴)·러시아어.
+
+## 결정 (2026-11-18, 대표)
+- **브랜드 이름 = STORY Korean** (부제 TOPIK Online · by STORY CONSULTING). 유학원 STORY CONSULTING과 한 가족. 나중에 나망간 오프라인 학원은 "STORY Korean o'quv markazi" 형식. "세종"·"TOPIK"만 쓰는 이름은 피함(공식 기관처럼 보임).
+- 수업 봇 = **STORY Korean** (대표가 BotFather에서 만듦, 아이디는 Vercel NEXT_PUBLIC_BOT_USERNAME). 토큰은 Vercel 환경변수에만 — 채팅·저장소에 두지 않음.
 
 ## 결정 (2026-11-17, 대표)
 - 영상은 직접 만들지 않음 → **Zoom** (1기). 처음엔 [수업 들어가기] → Zoom 링크, 다음 단계에서 Zoom Meeting SDK로 홈페이지 안에 넣기. 12월 무료 체험반에서 **Jitsi(JaaS, 25명까지 무료)** 도 시험.

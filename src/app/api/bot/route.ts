@@ -16,8 +16,8 @@ export async function POST(req: Request) {
     await tgCall("sendMessage", {
       chat_id: m.chat.id,
       text: ru
-        ? "STORY CONSULTING · TOPIK Online\n\nЗапись в группу, оплата, вход на урок и домашние задания — всё по кнопке ниже."
-        : "STORY CONSULTING · TOPIK Online\n\nGuruhga yozilish, to'lov, darsga kirish va uy vazifalari — hammasi pastdagi tugmada.",
+        ? "STORY Korean · TOPIK Online\n\nЗапись в группу, оплата, вход на урок и домашние задания — всё по кнопке ниже."
+        : "STORY Korean · TOPIK Online\n\nGuruhga yozilish, to'lov, darsga kirish va uy vazifalari — hammasi pastdagi tugmada.",
       reply_markup: { inline_keyboard: [[{ text: ru ? "📚 Мои уроки" : "📚 Darslarim", web_app: { url: `${origin}/app` } }]] },
     });
   }

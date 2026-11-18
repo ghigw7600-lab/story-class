@@ -10,9 +10,9 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
   const { e } = await searchParams;
   return (
     <>
-      <div className="top"><b>STORY CONSULTING</b><span className="grow" /><span>TOPIK Online</span></div>
+      <div className="top"><b>STORY Korean</b><span className="grow" /><span>TOPIK Online</span></div>
       <div className="wrap" style={{ textAlign: "center", paddingTop: 48 }}>
-        <h1>TOPIK Online</h1>
+        <h1>STORY Korean</h1><p style={{ marginTop: -8 }}>TOPIK Online · by STORY CONSULTING</p>
         <p className="muted">Telegram orqali kiring · Войдите через Telegram · 텔레그램으로 로그인</p>
         {e && <div className="notice err">Telegram tasdiqlanmadi. Qaytadan urinib ko&apos;ring. (로그인 확인 실패 — 다시 시도)</div>}
         {BOT_USERNAME && (

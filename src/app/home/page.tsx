@@ -31,7 +31,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
 
   const head = (
     <div className="top">
-      <b>STORY CONSULTING</b><span className="grow" />
+      <b>STORY Korean</b><span className="grow" />
       {me.role === "owner" && <Link href="/admin">관리</Link>}
       <form action={setLang}><input type="hidden" name="lang" value={L === "uz" ? "ru" : "uz"} /><button className="btn small" style={{ background: "transparent", borderColor: "#fff6" }}>{L === "uz" ? "RU" : "UZ"}</button></form>
     </div>
