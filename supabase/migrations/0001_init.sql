@@ -86,6 +86,12 @@ alter table attendance  enable row level security;
 alter table events      enable row level security;
 -- (정책 없음 = anon·authenticated 키로는 0건. 서버의 service_role만 읽고 씀)
 
+-- 서버(service_role)만 표를 읽고 쓰게 (Supabase "자동 권한 주기"를 꺼도 되게), 브라우저 키는 권한 없음
+grant usage on schema public to service_role;
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+revoke all on all tables in schema public from anon, authenticated;
+
 -- events는 서버도 고치거나 지우지 못하게
 create or replace function events_readonly() returns trigger language plpgsql as $$
 begin raise exception 'events는 고치거나 지울 수 없어요'; end $$;
