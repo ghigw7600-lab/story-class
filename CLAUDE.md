@@ -18,6 +18,7 @@
 - DB는 GIEC 전산과 **따로** (Supabase 새 프로젝트 story-class, 서울).
 
 ## 기술
+- **서버 지역 = 서울(icn1, vercel.json)** — Supabase가 서울이라. 기본(미국 동부)이면 DB 한 번마다 태평양을 오가서 느림 (2026-11-18).
 - Next.js 15 (App Router, TS) · Supabase (Postgres + 파일 저장) · Vercel.
 - **DB는 서버에서만** (service_role, `src/lib/db.ts`). 모든 표 RLS 켜고 정책 없음 → 브라우저 키로는 0건. 학생 화면도 서버가 "그 학생 것만" 골라서 보여 줌.
 - `events` = 누가·언제·무엇을 (트리거로 수정·삭제 불가).
