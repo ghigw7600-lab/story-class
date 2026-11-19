@@ -47,6 +47,14 @@
 - 기출은 **출처(회차·번호) 표기**. 시작용 `supabase/seed/channel_sample_quiz.sql` = 자체 연습문제 5개(기출 아님, 우즈벡어 해설 현지인 확인 필요).
 - 다음 후보: 글 종류 늘리기(기초 한글·K-pop 표현·음식 읽기 챌린지 — 사진+글), 요일별 순서.
 
+## 채널 소식 — 확인 후 게시 (2026-11-19, 대표)
+- 대표 결정: 한국·TOPIK 소식은 **완전 자동 X, 확인 후 게시**. 흐름 = RSS 수집 → Claude 요약 초안(우즈벡어 + 대표 확인용 한국어) → 대표 [✔ 승인] → 하루 1개 게시.
+- 표 `news_sources`(RSS 주소, 시작값 = 구글 뉴스 검색 RSS 4개: TOPIK·유학생 비자/정책·우즈벡 유학생·GKS) / `news_items`(url unique, status draft·approved·posted·rejected·ignored, cta class·consult). migration 0003.
+- cron: `news-collect` 03:00 UTC(한국 12시) — 새 글 최대 12개만 Claude에 보냄, 초안 있으면 대표에게 봇 알림(→ /admin/news) / `news-post` 07:00 UTC(한국 16시) — 승인된 것 중 가장 오래된 1개.
+- 요약 원칙(프롬프트 `src/lib/news.ts` SYSTEM): 원문에 있는 사실만, 제목만 있으면 추측 없이 짧은 소개 + 원문 링크, 문장 복사 X(저작권), 현지스타일 우즈벡어. 버튼: 원문 + (TOPIK·한국어 → 수업 봇 / 비자·입학·장학금 → @storyconsulting_bot).
+- RSS 없는 곳(TOPIK 공식, 하이코리아)은 관리 화면 [링크로 직접 초안 만들기]. 정책브리핑(korea.kr) RSS는 2026-07 중단됨.
+- 환경변수 추가: `ANTHROPIC_API_KEY`(필수), `ANTHROPIC_MODEL`(선택, 기본 claude-sonnet-5-5), `CONSULT_BOT_USERNAME`(선택).
+
 ## 1단계 (2026-11-17 완료, 2026-11-18 배포)
 - 학생: 처음 여권 영문 이름·전화(선택) → 반 신청 → 입금 사진 → 입금 확인되면 [Darsga kirish] (출석 기록 + Zoom). UZ/RU 바꾸기.
 - 대표(/admin): 오늘 숫자(입금 확인 대기·수강 중·오늘 수업), 입금 사진 보고 [✔ 입금 확인](학생에게 봇 알림), 반 목록·만들기. 반 화면: 최근 4주 출석표(✔ △ ✕ ○·출석률), 명단·그만둠, 반 정보·Zoom 링크·강사.
