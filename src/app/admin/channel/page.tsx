@@ -43,6 +43,10 @@ export default async function ChannelAdmin({ searchParams }: { searchParams: Pro
             <span className={`badge ${check.ok ? "ok" : "bad"}`}>{check.ok ? "봇 연결 ✅" : `연결 안 됨 — ${check.error}`}</span>
           </div>
           <p className="muted">월~토 저녁 6시(타슈켄트) · 한국 밤 10시쯤 창고 맨 위 문제 1개를 퀴즈로 올려요 — 학생이 누르면 바로 정답·짧은 해설이 보여요. 일요일엔 퀴즈 대신 &quot;이번 주 문제 정답·해설 모음&quot; 1개가 올라가요. 창고에 남은 문제: <b>{q.length}개</b>{q.length < 7 && " — 일주일치(7개) 이상 채워 두세요"}</p>
+          <p className="muted">
+            설정 점검: 자동 실행 열쇠(CRON_SECRET) {(process.env.CRON_SECRET ?? "").trim() ? "✅ 있음" : "❌ 없음 — Vercel 환경변수에 넣고 Redeploy"}
+            {" · "}Claude API 키 {(process.env.ANTHROPIC_API_KEY ?? "").trim() ? "✅ 있음" : "— 없음 (소식·카드 자동 초안 쉼, 나머지는 정상)"}
+          </p>
           <div className="row">
             <form action={runNow}><button className="btn">▶ 퀴즈 지금 올리기</button></form>
             <form action={recapNow}><button className="btn">📚 주간 정답 모음 지금 올리기</button></form>
