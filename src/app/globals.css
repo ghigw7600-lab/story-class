@@ -42,3 +42,23 @@ table.grid th { background: #eef0f3; font-weight: 600; }
 .tablewrap { overflow-x: auto; }
 .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 12px; }
 @media (max-width: 640px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* 대표 화면 위쪽 (2026-11-20: 휴대폰에서 메뉴가 두 줄로 깨지던 것 → 아이콘 탭) */
+.atop { position: sticky; top: 0; z-index: 20; background: var(--navy); color: #fff; box-shadow: 0 2px 8px #0002; }
+.atop-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 4px; }
+.atop-brand { color: #fff !important; text-decoration: none; font-weight: 800; font-size: 17px; letter-spacing: .3px; }
+.atop-brand span { font-weight: 500; opacity: .7; }
+.atop-out { background: transparent; color: #fff; border: 1px solid #fff5; border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.atop-tabs { display: flex; gap: 2px; overflow-x: auto; padding: 4px 8px 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.atop-tabs::-webkit-scrollbar { display: none; }
+.atop-tab { flex: 1 0 auto; min-width: 54px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 8px; border-radius: 12px;
+  color: #ffffffc0 !important; text-decoration: none; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.atop-tab .i { font-size: 20px; line-height: 1; }
+.atop-tab.on { background: #ffffff22; color: #fff !important; box-shadow: inset 0 -3px 0 #e0313f; }
+.atop-tab:hover { background: #ffffff14; }
+@media (min-width: 760px) {
+  .atop-row { padding: 10px 20px 2px; }
+  .atop-tabs { padding: 4px 14px 8px; }
+  .atop-tab { flex: 0 0 auto; flex-direction: row; gap: 6px; font-size: 14px; padding: 8px 14px; }
+  .atop-tab .i { font-size: 16px; }
+}

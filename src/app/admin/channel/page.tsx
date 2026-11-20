@@ -35,7 +35,7 @@ export default async function ChannelAdmin({ searchParams }: { searchParams: Pro
         {r && <div className="notice ok">실행 결과: {r}</div>}
         {error && <div className="notice err">채널 글 표가 아직 없어요 — Supabase SQL Editor에서 <b>0002_channel_posts.sql</b>을 실행해 주세요.</div>}
 
-        <h1>📢 채널 자동 글</h1>
+        <h1>📢 오늘의 퀴즈 (채널)</h1>
         <div className="card">
           <div className="row">
             <b>{check.title ?? CHANNEL}</b>
