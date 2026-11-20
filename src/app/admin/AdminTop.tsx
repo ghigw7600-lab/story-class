@@ -6,6 +6,7 @@ export default function AdminTop() {
       <Link href="/admin" style={{ textDecoration: "none" }}><b>STORY Korean · 수업 관리</b></Link>
       <span className="grow" />
       <Link href="/admin/channel">📢 채널</Link>
+      <Link href="/admin/cards">🌅 카드</Link>
       <Link href="/admin/news">📰 소식</Link>
       <a href="/api/bot/setup">🤖 봇 연결</a>
       <Link href="/home">학생 화면</Link>

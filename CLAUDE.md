@@ -55,6 +55,12 @@
 - RSS 없는 곳(TOPIK 공식, 하이코리아)은 관리 화면 [링크로 직접 초안 만들기]. 정책브리핑(korea.kr) RSS는 2026-07 중단됨.
 - 환경변수 추가: `ANTHROPIC_API_KEY`(필수), `ANTHROPIC_MODEL`(선택, 기본 claude-sonnet-5-5), `CONSULT_BOT_USERNAME`(선택).
 
+## 경쟁 채널 분석 → 아침 카드·서명 (2026-11-20, 대표 "그렇게 진행")
+- 분석(11-20): TOPIK ACADEMY(9.2천, 학원+컨설팅 채널 분리·매일 '오늘의 표현' 카드·PDF 조회수 최고·시험 일정형 콘텐츠), KaresTili(1.5만, 문법 카드·통계 글 반응 최고·읽기 챌린지 김밥 11-10 이미 시작), TILLO BOLA(1.7만, 개인 브랜드·무료 마라톤·반응 조건·강좌 광고 반복·판매는 사람 DM). 결론 순서: ① 오늘의 표현 카드 ② 서명·참여 투표 ③ 시험 일정 캠페인.
+- ① `daily_cards`(0004, kind expression·poll, draft→approved→posted). 카드 그림 = `next/og` ImageResponse 1080², 폰트는 구글 폰트 Noto Sans KR을 글자만 잘라 받음(`src/lib/cards.ts`), 텔레그램엔 multipart sendPhoto(캡션 + 수업 봇 버튼). cron `morning` 05:00 UTC(타슈켄트 10시) 표현 1장, 화·금 투표 1개. 승인된 게 없으면 대표에게 봇 알림. 창고 < 4장(투표 < 2)이면 news-collect cron 때 Claude가 7장(4개) 자동 초안 + 알림. 대표 화면 [🌅 카드]: 그림 미리보기·고치기·승인·지금 올리기·Claude로 초안(요청 문구).
+- ② 모든 채널 글 끝 서명 `SIGN`(`src/lib/channel.ts`): "🇰🇷 @storytopik — TOPIK · Koreys tili". 소식 요약 지침에 "원문의 숫자를 제목에" 추가(통계 글 반응이 가장 큼).
+- Claude 호출 공통화 `src/lib/claude.ts` (claudeJSON).
+
 ## 1단계 (2026-11-17 완료, 2026-11-18 배포)
 - 학생: 처음 여권 영문 이름·전화(선택) → 반 신청 → 입금 사진 → 입금 확인되면 [Darsga kirish] (출석 기록 + Zoom). UZ/RU 바꾸기.
 - 대표(/admin): 오늘 숫자(입금 확인 대기·수강 중·오늘 수업), 입금 사진 보고 [✔ 입금 확인](학생에게 봇 알림), 반 목록·만들기. 반 화면: 최근 4주 출석표(✔ △ ✕ ○·출석률), 명단·그만둠, 반 정보·Zoom 링크·강사.

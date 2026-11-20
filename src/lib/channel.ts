@@ -5,6 +5,8 @@ import { BOT_USERNAME } from "./env";
 
 // 봇이 글을 올리는 채널 — 환경변수 CHANNEL_ID가 없으면 @storytopik
 export const CHANNEL = (process.env.CHANNEL_ID ?? "").trim() || "@storytopik";
+// 모든 채널 글 끝에 붙는 서명 — 다른 채널로 퍼져도 우리 채널이 보이게
+export const SIGN = `\n\n🇰🇷 ${CHANNEL.startsWith("@") ? CHANNEL : "@storytopik"} — TOPIK · Koreys tili`;
 
 export type ChannelPost = {
   id: number; source: string | null; level: string | null; passage: string | null;
@@ -31,6 +33,7 @@ async function postAnswer(p: ChannelPost): Promise<string> {
     `✅ Javob · 정답: ${NUM[p.correct] ?? p.correct + 1} ${p.options[p.correct] ?? ""}`,
     p.explain_full ? `\n${p.explain_full}` : "",
     p.source ? `\n📌 ${p.source}` : "",
+    SIGN,
   ].join("");
   const r = (await tgCall("sendMessage", {
     chat_id: CHANNEL, text: lines,
@@ -47,7 +50,7 @@ async function postQuiz(p: ChannelPost): Promise<string> {
   let passageId: number | null = null;
   if (p.passage) {
     const head = `📝 ${p.level ? `${p.level} · ` : ""}Bugungi savol · 오늘의 문제`;
-    const r = (await tgCall("sendMessage", { chat_id: CHANNEL, text: `${head}\n\n${p.passage}` })) as TgResult;
+    const r = (await tgCall("sendMessage", { chat_id: CHANNEL, text: `${head}\n\n${p.passage}${SIGN}` })) as TgResult;
     if (!r.ok) return `지문 글 실패(#${p.id}): ${r.description ?? "알 수 없음"}`;
     passageId = r.result?.message_id ?? null;
   }

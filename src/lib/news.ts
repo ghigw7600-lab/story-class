@@ -2,15 +2,14 @@ import "server-only";
 import { db, logEvent } from "./db";
 import { tgCall } from "./tg";
 import { BOT_USERNAME } from "./env";
-import { CHANNEL } from "./channel";
+import { CHANNEL, SIGN } from "./channel";
+import { claudeJSON, hasClaude } from "./claude";
+export { hasClaude };
 
 // ───────── 설정 ─────────
-const ANTHROPIC_KEY = (process.env.ANTHROPIC_API_KEY ?? "").trim();
-const MODEL = (process.env.ANTHROPIC_MODEL ?? "").trim() || "claude-sonnet-5-5";
 export const CONSULT_BOT = ((process.env.CONSULT_BOT_USERNAME ?? "").trim() || "storyconsulting_bot").replace(/^@/, "");
 const MAX_PER_RUN = 12;            // 한 번 모을 때 Claude에게 보내는 최대 글 수 (비용 상한)
 const MAX_AGE_DAYS = 4;            // 이보다 오래된 글은 안 가져옴
-export const hasClaude = () => !!ANTHROPIC_KEY;
 
 export type NewsItem = {
   id: number; url: string; title: string | null; snippet: string | null; source_name: string | null;
@@ -68,6 +67,7 @@ STRICT RULES
 - Use ONLY facts written in the given text. Never add dates, numbers, names or rules that are not in the text. If the text is only a headline, write a short teaser of what the headline says and tell readers to open the link — do not guess details.
 - Do not copy sentences from the article; rewrite briefly in your own words.
 - Uzbek: Latin script, simple everyday standard Uzbek as locals write it on Telegram (natural local phrasing, not word-for-word translation). Short: title max 70 characters, body 2-4 short sentences, max 350 characters. You may use 1-2 emoji. Useful local words: "qabullar ochiq", "talablar", "grant", "til o'rgatish markazi", "viza cho'zdirish", "asqotadi", "Xullas, ...".
+- If the text has concrete numbers (how many students, wages, scholarship amounts, dates), put the most striking number in the title — readers react most to concrete figures. Only numbers from the text.
 - No exaggeration, no promises.
 
 Reply with ONLY a JSON object, no other text:
@@ -77,20 +77,8 @@ cta: "class" for TOPIK/Korean-language topics, "consult" for visa/admission/scho
 type Draft = { relevant: boolean; kind?: string; cta?: string; title_ko?: string; summary_ko?: string; title_uz?: string; body_uz?: string };
 
 async function askClaude(e: { title: string; snippet: string; source: string; url: string; published?: string }): Promise<Draft> {
-  if (!ANTHROPIC_KEY) throw new Error("ANTHROPIC_API_KEY 없음");
   const user = `Source: ${e.source || "-"}\nDate: ${e.published ?? "-"}\nURL: ${e.url}\nTitle: ${e.title}\nText: ${e.snippet || "(headline only)"}`;
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: MODEL, max_tokens: 800, system: SYSTEM, messages: [{ role: "user", content: user }] }),
-    signal: AbortSignal.timeout(40000),
-  });
-  const j = (await r.json()) as { content?: { type: string; text?: string }[]; error?: { message?: string } };
-  if (!r.ok) throw new Error(j.error?.message ?? `Claude HTTP ${r.status}`);
-  const text = (j.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("");
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error("Claude 답에 JSON이 없음");
-  return JSON.parse(m[0]) as Draft;
+  return claudeJSON<Draft>(SYSTEM, user);
 }
 
 const draftFields = (d: Draft) => ({
@@ -110,7 +98,7 @@ async function inBatches<T>(list: T[], size: number, fn: (x: T) => Promise<void>
 export async function collectNews(): Promise<{ drafts: number; ignored: number; errors: string[] }> {
   const sb = db();
   const errors: string[] = [];
-  if (!ANTHROPIC_KEY) return { drafts: 0, ignored: 0, errors: ["ANTHROPIC_API_KEY가 없어서 요약을 못 해요 (Vercel 환경변수)"] };
+  if (!hasClaude()) return { drafts: 0, ignored: 0, errors: ["ANTHROPIC_API_KEY가 없어서 요약을 못 해요 (Vercel 환경변수)"] };
   const { data: sources } = await sb.from("news_sources").select("id,name,url").eq("active", true);
   const fresh: (FeedEntry & { source_id: number })[] = [];
   const cutoff = Date.now() - MAX_AGE_DAYS * 86400000;
@@ -173,7 +161,7 @@ export async function draftFromLink(url: string, pasted: string): Promise<{ ok: 
 
 // ───────── ② 올리기 ─────────
 export async function postNews(n: NewsItem): Promise<{ ok: boolean; error?: string }> {
-  const text = `📰 ${n.title_uz ?? ""}\n\n${n.body_uz ?? ""}${n.source_name ? `\n\n🔗 Manba: ${n.source_name}` : ""}`;
+  const text = `📰 ${n.title_uz ?? ""}\n\n${n.body_uz ?? ""}${n.source_name ? `\n\n🔗 Manba: ${n.source_name}` : ""}${SIGN}`;
   const cta = n.cta === "consult"
     ? { text: "🎓 STORY CONSULTING · bepul konsultatsiya", url: `https://t.me/${CONSULT_BOT}?start=channel` }
     : BOT_USERNAME ? { text: "📚 STORY Korean · TOPIK darslari", url: `https://t.me/${BOT_USERNAME}?start=channel` } : null;
