@@ -11,8 +11,9 @@ import { CONSULT_BOT } from "./news";
 export type ExamEvent = {
   id: number; name: string; place: string | null; exam_date: string; reg_start: string | null; reg_end: string | null;
   result_date: string | null; link: string | null; active: boolean;
+  confirmed: boolean; note: string | null;   // confirmed=false = 예상 일정 → 자동 글 안 올림
 };
-export const EXAM_COLS = "id,name,place,exam_date,reg_start,reg_end,result_date,link,active";
+export const EXAM_COLS = "id,name,place,exam_date,reg_start,reg_end,result_date,link,active,confirmed,note";
 
 const MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avgust", "sentabr", "oktabr", "noyabr", "dekabr"];
 export const uzDate = (d: string) => { const [, m, day] = d.split("-").map(Number); return `${day}-${MONTHS[m - 1]}`; };
@@ -69,7 +70,7 @@ export async function postExamMsg(e: ExamEvent, m: Msg): Promise<string> {
 export async function runExamCampaign(): Promise<string[]> {
   const sb = db();
   const today = tashkentToday();
-  const { data: events, error } = await sb.from("exam_events").select(EXAM_COLS).eq("active", true).gte("exam_date", addDays(today, -60));
+  const { data: events, error } = await sb.from("exam_events").select(EXAM_COLS).eq("active", true).eq("confirmed", true).gte("exam_date", addDays(today, -60));
   if (error) return [];
   const out: string[] = [];
   for (const e of (events ?? []) as ExamEvent[]) {

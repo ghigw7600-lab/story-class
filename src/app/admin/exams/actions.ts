@@ -14,6 +14,7 @@ export async function saveExam(f: FormData) {
   const row = {
     name: str(f, "name"), place: str(f, "place") || null, exam_date: date(f, "exam_date"),
     reg_start: date(f, "reg_start"), reg_end: date(f, "reg_end"), result_date: date(f, "result_date"), link: str(f, "link") || null,
+    note: str(f, "note") || null, confirmed: str(f, "confirmed") === "1",
   };
   if (!row.name || !row.exam_date) back("e=" + encodeURIComponent("이름과 시험일은 꼭 넣어 주세요"));
   const id = Number(str(f, "id"));
@@ -37,4 +38,13 @@ export async function postExamNow(f: FormData) {
   if (!data || !m) back("e=" + encodeURIComponent("글을 찾지 못했어요"));
   const r = await postExamMsg(data as ExamEvent, m!);
   back(r.startsWith("실패") ? `e=${encodeURIComponent(r)}` : "m=posted");
+}
+
+// [✔ 공식 확인함] / [예상으로 되돌리기]
+export async function confirmExam(f: FormData) {
+  const me = await requireOwner();
+  const on = str(f, "confirmed") === "1";
+  await db().from("exam_events").update({ confirmed: on }).eq("id", Number(str(f, "id")));
+  await logEvent(me.tg_id, "exam", str(f, "id"), on ? "공식 확인" : "예상으로");
+  back("m=saved");
 }
