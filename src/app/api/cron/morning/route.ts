@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { postNextCard } from "@/lib/cards";
+import { runExamCampaign } from "@/lib/exams";
 import { cronOk } from "@/lib/cron";
 import { OWNER_IDS } from "@/lib/env";
 import { tgCall } from "@/lib/tg";
 
-// 매일 아침(타슈켄트 10시): 오늘의 표현 카드 1장 + 화·금요일엔 참여 투표 1개
+// 매일 아침(타슈켄트 10시): 오늘의 표현 카드 1장 + 화·금요일엔 참여 투표 1개 + 시험 일정 캠페인 글
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
@@ -13,6 +14,7 @@ export async function GET(req: Request) {
   const out = [await postNextCard("expression")];
   const day = new Date(Date.now() + 5 * 3600_000).getUTCDay(); // 타슈켄트(UTC+5) 요일
   if (day === 2 || day === 5) out.push(await postNextCard("poll"));
+  const exam = await runExamCampaign(); // 시험 일정 캠페인 (오늘 해당하는 글만)
   // 올릴 게 없었으면 대표에게 알림
   const empty = out.filter((s) => s.startsWith("승인된"));
   if (empty.length) {
@@ -22,5 +24,5 @@ export async function GET(req: Request) {
       reply_markup: { inline_keyboard: [[{ text: "🌅 아침 카드 확인", web_app: { url: `${origin}/app?to=/admin/cards` } }]] },
     })));
   }
-  return NextResponse.json({ ok: true, result: out });
+  return NextResponse.json({ ok: true, result: out, exam });
 }

@@ -60,6 +60,7 @@
 - ① `daily_cards`(0004, kind expression·poll, draft→approved→posted). 카드 그림 = `next/og` ImageResponse 1080², 폰트는 구글 폰트 Noto Sans KR을 글자만 잘라 받음(`src/lib/cards.ts`), 텔레그램엔 multipart sendPhoto(캡션 + 수업 봇 버튼). cron `morning` 05:00 UTC(타슈켄트 10시) 표현 1장, 화·금 투표 1개. 승인된 게 없으면 대표에게 봇 알림. 창고 < 4장(투표 < 2)이면 news-collect cron 때 Claude가 7장(4개) 자동 초안 + 알림. 대표 화면 [🌅 카드]: 그림 미리보기·고치기·승인·지금 올리기·Claude로 초안(요청 문구).
 - ② 모든 채널 글 끝 서명 `SIGN`(`src/lib/channel.ts`): "🇰🇷 @storytopik — TOPIK · Koreys tili". 소식 요약 지침에 "원문의 숫자를 제목에" 추가(통계 글 반응이 가장 큼).
 - Claude 호출 공통화 `src/lib/claude.ts` (claudeJSON).
+- ③ 시험 일정 캠페인(0005 `exam_events`·`exam_posts`, `src/lib/exams.ts`): 대표가 [📅 시험]에 회차·장소·시험일·접수 시작/마감·성적 발표를 넣으면 morning cron이 그날 글 자동: 접수 시작 → 마감 2일 전 → D-30/14/7/3(팁) → D-1(준비물) → 당일 응원 → 다음 날 "어땠어요?" 글+투표 → 성적 발표(상담 버튼). 우즈벡어 = 고정 틀(현지인 확인 필요). 날짜는 하드코딩 X — 2027년 110회(1/10)는 국내만, 우즈벡 시행일은 공식 공지로 확인.
 
 ## 1단계 (2026-11-17 완료, 2026-11-18 배포)
 - 학생: 처음 여권 영문 이름·전화(선택) → 반 신청 → 입금 사진 → 입금 확인되면 [Darsga kirish] (출석 기록 + Zoom). UZ/RU 바꾸기.
