@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db, logEvent } from "@/lib/db";
 import { requireOwner } from "@/lib/session";
-import { runDaily } from "@/lib/channel";
+import { runDaily, postWeeklyRecap } from "@/lib/channel";
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 
@@ -36,11 +36,20 @@ export async function skipPost(f: FormData) {
   redirect("/admin/channel?m=skipped");
 }
 
-// [지금 올리기] — 시험용. 어제 문제 정답 + 다음 문제를 바로 올림
+// [지금 올리기] — 시험용. 다음 문제를 바로 퀴즈로 올림
 export async function runNow() {
   const me = await requireOwner();
   const out = await runDaily(true);
   await logEvent(me.tg_id, "channel", "run", out.join(" · "));
   revalidatePath("/admin/channel");
   redirect(`/admin/channel?r=${encodeURIComponent(out.join(" · "))}`);
+}
+
+// [주간 정답 모음 지금 올리기]
+export async function recapNow() {
+  const me = await requireOwner();
+  const r = await postWeeklyRecap();
+  await logEvent(me.tg_id, "channel", "recap", r);
+  revalidatePath("/admin/channel");
+  redirect(`/admin/channel?r=${encodeURIComponent(r)}`);
 }

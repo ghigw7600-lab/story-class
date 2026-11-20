@@ -2,7 +2,7 @@ import { requireOwner } from "@/lib/session";
 import { db } from "@/lib/db";
 import { CHANNEL, NUM, POST_COLS, channelCheck, type ChannelPost } from "@/lib/channel";
 import AdminTop from "../AdminTop";
-import { addPost, skipPost, runNow } from "./actions";
+import { addPost, skipPost, runNow, recapNow } from "./actions";
 
 const MSG: Record<string, [string, string]> = {
   added: ["ok", "창고에 넣었어요."],
@@ -12,7 +12,7 @@ const MSG: Record<string, [string, string]> = {
   long: ["err", "글자 수가 넘었어요 — 문제 300자 · 보기 100자 · 짧은 해설 200자까지."],
   err: ["err", "저장하지 못했어요. Supabase에 0002 SQL을 실행했는지 확인해 주세요."],
 };
-const STATUS: Record<string, string> = { queued: "대기", posted: "문제 올림", answered: "정답까지 올림", skipped: "안 올림" };
+const STATUS: Record<string, string> = { queued: "대기", posted: "문제 올림", answered: "주간 모음에 넣음", skipped: "안 올림" };
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
 
 export default async function ChannelAdmin({ searchParams }: { searchParams: Promise<{ m?: string; r?: string }> }) {
@@ -42,8 +42,11 @@ export default async function ChannelAdmin({ searchParams }: { searchParams: Pro
             <a href={`https://t.me/${CHANNEL.replace(/^@/, "")}`} target="_blank">{CHANNEL}</a>
             <span className={`badge ${check.ok ? "ok" : "bad"}`}>{check.ok ? "봇 연결 ✅" : `연결 안 됨 — ${check.error}`}</span>
           </div>
-          <p className="muted">매일 저녁 6시(타슈켄트) · 한국 밤 10시쯤 자동으로 ① 어제 문제의 정답·해설 → ② 창고 맨 위 문제 1개를 퀴즈로 올려요. 창고에 남은 문제: <b>{q.length}개</b>{q.length < 7 && " — 일주일치(7개) 이상 채워 두세요"}</p>
-          <form action={runNow}><button className="btn">▶ 지금 바로 올리기 (시험)</button> <span className="muted">어제 문제 정답 + 다음 문제를 지금 올려요</span></form>
+          <p className="muted">월~토 저녁 6시(타슈켄트) · 한국 밤 10시쯤 창고 맨 위 문제 1개를 퀴즈로 올려요 — 학생이 누르면 바로 정답·짧은 해설이 보여요. 일요일엔 퀴즈 대신 &quot;이번 주 문제 정답·해설 모음&quot; 1개가 올라가요. 창고에 남은 문제: <b>{q.length}개</b>{q.length < 7 && " — 일주일치(7개) 이상 채워 두세요"}</p>
+          <div className="row">
+            <form action={runNow}><button className="btn">▶ 퀴즈 지금 올리기</button></form>
+            <form action={recapNow}><button className="btn">📚 주간 정답 모음 지금 올리기</button></form>
+          </div>
         </div>
 
         <h2>창고 (올릴 순서)</h2>
@@ -77,7 +80,7 @@ export default async function ChannelAdmin({ searchParams }: { searchParams: Pro
             ))}
           </div>
           <label>짧은 해설 (답을 누르면 바로 보임 · 200자까지 · 우즈벡어)<input className="input" name="explain_short" maxLength={200} placeholder="도서관 = kutubxona" /></label>
-          <label>다음 날 정답·해설 글 (한국어 + 우즈벡어)<textarea className="input" name="explain_full" rows={4} /></label>
+          <label>자세한 해설 (한국어 + 우즈벡어, 참고용)<textarea className="input" name="explain_full" rows={4} /></label>
           <button className="btn primary">창고에 넣기</button>
         </form>
 
@@ -85,7 +88,7 @@ export default async function ChannelAdmin({ searchParams }: { searchParams: Pro
         {!d.length && <p className="muted">아직 없어요.</p>}
         {!!d.length && (
           <table className="grid">
-            <thead><tr><th>문제</th><th>상태</th><th>문제 올린 때</th><th>정답 올린 때</th></tr></thead>
+            <thead><tr><th>문제</th><th>상태</th><th>문제 올린 때</th><th>주간 모음</th></tr></thead>
             <tbody>{d.map((p) => (
               <tr key={p.id}><td>{p.question}</td><td>{STATUS[p.status]}</td><td>{fmt(p.posted_at)}</td><td>{fmt(p.answered_at)}</td></tr>
             ))}</tbody>

@@ -22,27 +22,27 @@ const HOUR = 60 * 60 * 1000;
 
 type TgResult = { ok: boolean; description?: string; result?: { message_id?: number } };
 
-// 수업 봇으로 가는 버튼 (정답 글 아래)
+// 수업 봇으로 가는 버튼 (주간 정답 모음 아래)
 const botButton = () => BOT_USERNAME
   ? { reply_markup: { inline_keyboard: [[{ text: "📚 STORY Korean · TOPIK darslari", url: `https://t.me/${BOT_USERNAME}?start=channel` }]] } }
   : {};
 
-// ① 어제 올린 문제의 정답·해설 (문제 메시지에 답장으로)
-async function postAnswer(p: ChannelPost): Promise<string> {
-  const lines = [
-    `✅ Javob · 정답: ${NUM[p.correct] ?? p.correct + 1} ${p.options[p.correct] ?? ""}`,
-    p.explain_full ? `\n${p.explain_full}` : "",
-    p.source ? `\n📌 ${p.source}` : "",
-    SIGN,
-  ].join("");
-  const r = (await tgCall("sendMessage", {
-    chat_id: CHANNEL, text: lines,
-    ...(p.poll_message_id ? { reply_parameters: { message_id: p.poll_message_id, allow_sending_without_reply: true } } : {}),
-    ...botButton(),
-  })) as TgResult;
-  if (!r.ok) return `정답 글 실패(#${p.id}): ${r.description ?? "알 수 없음"}`;
-  await db().from("channel_posts").update({ status: "answered", answered_at: new Date().toISOString(), answer_message_id: r.result?.message_id ?? null }).eq("id", p.id);
-  return `정답 글 올림(#${p.id})`;
+// 일요일: 이번 주 문제 정답·해설 모음 (퀴즈는 누르면 바로 정답이 나오니 매일 정답 글은 안 올림)
+export async function postWeeklyRecap(): Promise<string> {
+  const sb = db();
+  const { data } = await sb.from("channel_posts").select(POST_COLS).eq("status", "posted").order("posted_at", { ascending: false }).limit(10);
+  const list = ((data ?? []) as ChannelPost[]).reverse();
+  if (!list.length) return "이번 주 모음에 넣을 문제가 없어요";
+  const items = list.map((p, i) => {
+    const q = p.question.split("\n").filter(Boolean).slice(-2).join(" / ");
+    return `${i + 1}) ${q}\n✅ ${NUM[p.correct] ?? p.correct + 1} ${p.options[p.correct] ?? ""}${p.explain_short ? `\n💡 ${p.explain_short}` : ""}`;
+  });
+  let text = `📚 Haftalik takrorlash · 이번 주 문제 정답\n\nBu hafta ${list.length} ta savol ishladik. Javoblarni tekshiring va saqlab qo‘ying 📌\n\n${items.join("\n\n")}`;
+  if (text.length + SIGN.length > 4000) text = text.slice(0, 4000 - SIGN.length - 1) + "…";
+  const r = (await tgCall("sendMessage", { chat_id: CHANNEL, text: text + SIGN, ...botButton() })) as TgResult;
+  if (!r.ok) return `주간 모음 실패: ${r.description ?? "알 수 없음"}`;
+  await sb.from("channel_posts").update({ status: "answered", answered_at: new Date().toISOString(), answer_message_id: r.result?.message_id ?? null }).in("id", list.map((p) => p.id));
+  return `주간 정답 모음 올림(${list.length}문제)`;
 }
 
 // ② 창고의 다음 문제를 퀴즈로 (지문이 있으면 지문 먼저)
@@ -73,21 +73,24 @@ async function postQuiz(p: ChannelPost): Promise<string> {
 }
 
 // 하루치 작업. force = 대표가 [지금 올리기]를 눌렀을 때 (시간 간격 검사 안 함)
+// 매일 저녁 한 번: 월~토 = 오늘의 퀴즈 1개 / 일요일 = 이번 주 정답 모음 (퀴즈 쉼)
+// force = 대표가 [지금 바로 올리기]를 눌렀을 때 (요일·시간 검사 없이 퀴즈 1개)
 export async function runDaily(force = false): Promise<string[]> {
   const sb = db();
   const out: string[] = [];
   const now = Date.now();
+  const tashkentDay = new Date(now + 5 * HOUR).getUTCDay();
 
-  // ① 정답: 문제를 올린 지 12시간 넘은 것 (force면 바로)
-  const { data: posted } = await sb.from("channel_posts").select(POST_COLS).eq("status", "posted").order("posted_at");
-  for (const p of (posted ?? []) as ChannelPost[]) {
-    if (!force && p.posted_at && now - Date.parse(p.posted_at) < 12 * HOUR) continue;
-    out.push(await postAnswer(p));
-  }
-
-  // ② 새 문제: 하루에 한 번만 (cron이 두 번 불려도 20시간 안에 올린 게 있으면 건너뜀)
   if (!force) {
+    // cron이 두 번 불려도 20시간 안에 올린 게 있으면 건너뜀
     const { data: last } = await sb.from("channel_posts").select("posted_at").not("posted_at", "is", null).order("posted_at", { ascending: false }).limit(1).maybeSingle();
+    if (tashkentDay === 0) {
+      const { data: lastRecap } = await sb.from("channel_posts").select("answered_at").not("answered_at", "is", null).order("answered_at", { ascending: false }).limit(1).maybeSingle();
+      if (lastRecap?.answered_at && now - Date.parse(lastRecap.answered_at) < 20 * HOUR) out.push("이번 주 모음은 이미 올렸어요");
+      else out.push(await postWeeklyRecap());
+      await logEvent(null, "channel", CHANNEL, out.join(" · "));
+      return out;
+    }
     if (last?.posted_at && now - Date.parse(last.posted_at) < 20 * HOUR) {
       out.push("오늘 문제는 이미 올렸어요");
       return out;
