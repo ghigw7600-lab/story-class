@@ -62,3 +62,28 @@ export async function generate(f: FormData) {
   const r = await generateCards(kind, kind === "poll" ? 4 : 7, str(f, "hint").slice(0, 300));
   back(r.error ? `e=${encodeURIComponent(r.error)}` : `m=generated&n=${r.added}`);
 }
+
+// 직접 추가 (API 키 없이도)
+export async function addCard(f: FormData) {
+  const me = await requireOwner();
+  const kind = str(f, "kind") === "poll" ? "poll" : "expression";
+  const row = kind === "poll"
+    ? { kind, question: str(f, "question"), options: str(f, "options").split("\n").map((s) => s.trim()).filter(Boolean).slice(0, 6) }
+    : { kind, expr_ko: str(f, "expr_ko"), meaning_uz: str(f, "meaning_uz"), meaning_ko: str(f, "meaning_ko") || null, note_uz: str(f, "note_uz") || null,
+        level: str(f, "level") || "TOPIK II", examples: [0, 1].map((i) => ({ ko: str(f, `ex${i}_ko`), uz: str(f, `ex${i}_uz`) })).filter((e) => e.ko && e.uz) };
+  if (kind === "poll" ? !row.question || (row.options as string[]).length < 2 : !(row as { expr_ko: string }).expr_ko || !(row as { meaning_uz: string }).meaning_uz)
+    back("e=" + encodeURIComponent(kind === "poll" ? "질문과 보기 2개 이상을 넣어 주세요" : "표현과 우즈벡어 뜻은 꼭 넣어 주세요"));
+  const { error } = await db().from("daily_cards").insert(row);
+  if (error) back("e=" + encodeURIComponent("저장 실패 — 0004 SQL을 실행했는지 확인해 주세요"));
+  await logEvent(me.tg_id, "card", kind, "직접 추가");
+  back("m=added");
+}
+
+// 초안 모두 승인 (종류별)
+export async function approveAll(f: FormData) {
+  const me = await requireOwner();
+  const kind = str(f, "kind") === "poll" ? "poll" : "expression";
+  await db().from("daily_cards").update({ status: "approved", decided_by: me.tg_id }).eq("kind", kind).eq("status", "draft");
+  await logEvent(me.tg_id, "card", kind, "모두 승인");
+  back("m=approved");
+}

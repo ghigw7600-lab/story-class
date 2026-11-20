@@ -6,7 +6,7 @@ insert into channel_posts (source, level, question, options, correct, explain_sh
 ('STORY Korean 연습문제', 'TOPIK I',
  '( )에 알맞은 것을 고르십시오.
 저는 ( )에서 책을 빌려요.',
- array['도서관', '병원', '시장', '공항'], 0,
+ array['병원', '도서관', '시장', '공항'], 1,
  '도서관 = kutubxona. Kitobni kutubxonadan olamiz.',
  '책을 빌리는 곳은 도서관이에요.
 📖 도서관 = kutubxona
@@ -15,7 +15,7 @@ insert into channel_posts (source, level, question, options, correct, explain_sh
 ('STORY Korean 연습문제', 'TOPIK I',
  '무엇에 대한 내용입니까?
 사과가 맛있어요. 바나나도 좋아해요.',
- array['과일', '날씨', '가족', '취미'], 0,
+ array['날씨', '가족', '과일', '취미'], 2,
  '사과 = olma, 바나나 = banan → 과일 = meva.',
  '사과와 바나나는 과일이에요.
 📖 과일 = meva
@@ -34,7 +34,7 @@ insert into channel_posts (source, level, question, options, correct, explain_sh
  '다음 대화의 ( )에 알맞은 것을 고르십시오.
 가: 생일이 언제예요?
 나: ( )',
- array['10월 5일이에요.', '서울에 살아요.', '학생이에요.', '김치를 좋아해요.'], 0,
+ array['서울에 살아요.', '학생이에요.', '김치를 좋아해요.', '10월 5일이에요.'], 3,
  '언제 = qachon → javob sana bilan bo''ladi.',
  '"언제"는 시간을 물어요. 그래서 날짜로 대답해요.
 📖 언제 = qachon
@@ -43,7 +43,7 @@ insert into channel_posts (source, level, question, options, correct, explain_sh
 ('STORY Korean 연습문제', 'TOPIK I',
  '밑줄 친 말과 반대되는 것을 고르십시오.
 이 가방은 아주 무거워요.',
- array['가벼워요', '비싸요', '작아요', '길어요'], 0,
+ array['비싸요', '작아요', '가벼워요', '길어요'], 2,
  '무겁다 = og''ir ↔ 가볍다 = yengil.',
  '무겁다의 반대말은 가볍다예요.
 📖 무겁다 = og''ir

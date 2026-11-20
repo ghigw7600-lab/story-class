@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { collectNews } from "@/lib/news";
+import { collectNews, hasClaude } from "@/lib/news";
 import { ensureCardStock } from "@/lib/cards";
 import { cronOk } from "@/lib/cron";
 import { OWNER_IDS } from "@/lib/env";
@@ -11,6 +11,8 @@ export const maxDuration = 120;
 
 export async function GET(req: Request) {
   if (!cronOk(req)) return NextResponse.json({ ok: false, error: "CRON_SECRET이 없거나 맞지 않아요" }, { status: 401 });
+  // API 키가 없으면 조용히 쉼 (대표가 키 없이 운영 중 — 매일 오류 알림 보내지 않음)
+  if (!hasClaude()) return NextResponse.json({ ok: true, skipped: "ANTHROPIC_API_KEY 없음 — 소식·카드 자동 초안 쉼" });
   const [r, cards] = await Promise.all([collectNews(), ensureCardStock()]);
   const origin = new URL(req.url).origin;
   if (cards.expression || cards.poll) {

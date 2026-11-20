@@ -3,13 +3,13 @@ import { db } from "@/lib/db";
 import { hasClaude } from "@/lib/claude";
 import { CARD_COLS, type Card } from "@/lib/cards";
 import AdminTop from "../AdminTop";
-import { approveCard, rejectCard, postCardNow, saveCard, generate } from "./actions";
+import { approveCard, rejectCard, postCardNow, saveCard, generate, addCard, approveAll } from "./actions";
 
 export const maxDuration = 120; // Claude로 초안 만들기는 1분쯤 걸림
 
 const MSG: Record<string, string> = {
   approved: "승인했어요 — 아침에 순서대로 올라가요.", rejected: "버렸어요.", posted: "채널에 올렸어요.",
-  saved: "고친 내용을 저장했어요 (그림도 새로 그려져요).", gone: "이미 올라간 카드예요.",
+  saved: "고친 내용을 저장했어요 (그림도 새로 그려져요).", added: "창고에 넣었어요.", gone: "이미 올라간 카드예요.",
 };
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "");
 
@@ -107,12 +107,43 @@ export default async function CardsAdmin({ searchParams }: { searchParams: Promi
         </div>
 
         <h2>오늘의 표현 {expr.length}장</h2>
+        {expr.some((c) => c.status === "draft") && <form action={approveAll}><input type="hidden" name="kind" value="expression" /><button className="btn">✔ 표현 초안 모두 승인</button> <span className="muted">한 장씩 보기 어려울 때 — 승인 후에도 올라가기 전엔 고치거나 버릴 수 있어요</span></form>}
         {!expr.length && <p className="muted">없어요 — 위에서 초안을 만들어 주세요.</p>}
         {expr.map((c) => <ExpressionForm key={c.id} c={c} />)}
 
         <h2>참여 투표 {polls.length}개</h2>
+        {polls.some((c) => c.status === "draft") && <form action={approveAll}><input type="hidden" name="kind" value="poll" /><button className="btn">✔ 투표 초안 모두 승인</button></form>}
         {!polls.length && <p className="muted">없어요.</p>}
         {polls.map((c) => <PollForm key={c.id} c={c} />)}
+
+        <h2>직접 추가</h2>
+        <form action={addCard} className="card">
+          <input type="hidden" name="kind" value="expression" />
+          <b>오늘의 표현</b>
+          <div className="row">
+            <label className="grow">표현 (한국어) *<input className="input" name="expr_ko" maxLength={40} placeholder="발이 넓다" /></label>
+            <label>레벨<select className="input" name="level" defaultValue="TOPIK II"><option>TOPIK I</option><option>TOPIK II</option></select></label>
+          </div>
+          <div className="row">
+            <label className="grow">뜻 (우즈벡어) *<input className="input" name="meaning_uz" maxLength={80} /></label>
+            <label className="grow">뜻 (한국어, 확인용)<input className="input" name="meaning_ko" /></label>
+          </div>
+          <label>언제 쓰는지 (우즈벡어)<input className="input" name="note_uz" maxLength={200} /></label>
+          {[0, 1].map((i) => (
+            <div className="row" key={i}>
+              <label className="grow">예문 {i + 1} (한국어)<input className="input" name={`ex${i}_ko`} maxLength={60} /></label>
+              <label className="grow">예문 {i + 1} (우즈벡어)<input className="input" name={`ex${i}_uz`} maxLength={90} /></label>
+            </div>
+          ))}
+          <button className="btn primary">창고에 넣기</button>
+        </form>
+        <form action={addCard} className="card">
+          <input type="hidden" name="kind" value="poll" />
+          <b>참여 투표</b>
+          <label>질문 (우즈벡어) *<input className="input" name="question" maxLength={200} /></label>
+          <label>보기 (한 줄에 하나, 2~6개) *<textarea className="input" name="options" rows={4} /></label>
+          <button className="btn primary">창고에 넣기</button>
+        </form>
 
         <h2>최근 올린 카드</h2>
         {!(posted ?? []).length && <p className="muted">아직 없어요.</p>}
