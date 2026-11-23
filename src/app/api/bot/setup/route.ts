@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const me = await getMe();
   if (me?.role !== "owner") return NextResponse.json({ ok: false, error: "대표만 할 수 있어요 — 먼저 로그인" }, { status: 403 });
   const origin = new URL(req.url).origin;
-  const hook = await tgCall("setWebhook", { url: `${origin}/api/bot`, secret_token: webhookSecret(), allowed_updates: ["message"], drop_pending_updates: true });
+  const hook = await tgCall("setWebhook", { url: `${origin}/api/bot`, secret_token: webhookSecret(), allowed_updates: ["message", "callback_query"], drop_pending_updates: true });
   const menu = await tgCall("setChatMenuButton", { menu_button: { type: "web_app", text: "📚 Darslar", web_app: { url: `${origin}/app` } } });
   const cmds = await tgCall("setMyCommands", { commands: [{ command: "start", description: "Boshlash · Начать" }] });
   const ok = hook.ok && menu.ok;
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <body style="font-family:sans-serif;padding:24px;line-height:1.6">
 <h2>${ok ? "✅ 봇 연결 완료" : "❌ 봇 연결 실패"}</h2>
-<p>${ok ? "이제 봇에서 /start 를 누르면 [📚 Darslarim] 버튼이 와요. 왼쪽 아래 메뉴 버튼도 바뀌었어요 (텔레그램을 껐다 켜면 보여요)." : "BOT_TOKEN 환경변수를 확인해 주세요. 아래 내용을 캡처해서 보내 주세요."}</p>
+<p>${ok ? "이제 봇에서 /start 를 누르면 채널 구독 확인 → 메뉴(자료·접수 도우미·시험 일정·온라인 수업·상담)가 와요. 왼쪽 아래 메뉴 버튼은 수업 화면이에요 (텔레그램을 껐다 켜면 보여요)." : "BOT_TOKEN 환경변수를 확인해 주세요. 아래 내용을 캡처해서 보내 주세요."}</p>
 <p style="color:#888;font-size:13px">주소: ${origin}<br>webhook: ${hook.ok ? "ok" : String(hook.description ?? "실패")} · 메뉴: ${menu.ok ? "ok" : String(menu.description ?? "실패")} · 명령어: ${cmds.ok ? "ok" : "실패"}</p>
 <p style="background:#f5f5f5;padding:12px;border-radius:8px;font-size:14px">봇: @${me2.result?.username ?? "?"}<br>텔레그램이 보내는 곳: ${wi.url ?? "-"}<br>못 보낸 메시지: ${wi.pending_update_count ?? "-"}개<br>마지막 오류: ${lastErr}</p>
 <p><a href="/admin">← 관리 화면으로</a></p></body>`;

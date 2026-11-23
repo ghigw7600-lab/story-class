@@ -82,6 +82,7 @@
 ## 경쟁 채널 심층 분석 → 따라 하기 (2026-11-20~23, 대표 "추천 순서대로")
 - 모델: @KOREAN_TOPIK_CHANNEL(1.24만, AYUPOV ISLOM) — 본채널 + 댓글 그룹 @Koreystili_grupa + TOPIK TESTLAR(기출 자료실: 회차별 문제지·듣기 음원·대본·정답 4종, 해시태그 #64_Topik #TOPIK_II #Savollar/#audio/#통합/#Javoblar, "Manba: @채널") + TTMIK(음원 재업) + **도서관 봇(구독 강제: 가입해야 메뉴 열림, 메뉴 13개 중 '개인 캐비닛 만들기')** + 광고 판매. 고정 글 = 우즈벡 시험 일정표. 조회수 1위 = 공식 시험 공지·접수 당일 실시간 중계. 댓글 = 거의 접수 질문, 운영자 무응답 → **STORY 기회: 접수 도우미 + 빠른 응답**. 교재·영화·TTMIK 재업은 저작권 문제 → 따라 하지 않음.
 - ① 고정용 일정표 카드(`src/lib/schedule.ts`): exam_events로 1080×1350 그림(RASMIY/TAXMINIY 글자 배지 — 그림 안 이모지 X, 외부 fetch 필요해서), 캡션 ✅/⏳ + [Ro‘yxatdan o‘tish yordami] 버튼(봇 ?start=reg), 올리고 pinChatMessage(실패 시 직접 고정 안내). [📅 시험] 위에 미리보기·[📌 올리고 고정].
+- ② 봇 도서관 + 구독 확인 + 접수 도우미(`src/lib/botflow.ts`, 0007 `library_items`·`bot_users`·`library_hit()`): /start(+source) → getChatMember로 @storytopik 구독 확인(봇 권한 문제면 막지 않음) → 안 했으면 [채널]·[✅ Tasdiqlash] → 메뉴(reply keyboard): 📚 Materiallar(분류 tests·writing·words·guide → 자료 → file_id로 다시 보냄, 다운로드 수) · 📝 Ro‘yxatdan o‘tish yordami(4단계 안내 + 다음 시험·접수일, topiktashkec.uz·상담 버튼) · 📅 TOPIK jadvali · 🎓 Onlayn darslar(미니앱) · 💬 Konsultatsiya(@storyconsulting_bot). 자료·도우미는 구독자만. **대표가 봇에 파일 + 캡션 `#tests 제목`을 보내면 저장**. webhook allowed_updates에 callback_query 추가 → 배포 후 [🤖 봇 연결] 다시 눌러야 함. 대표 화면 [📦 자료]: 봇 사용자 수·구독 수·자료 목록(이름·분류·순서·숨기기)·링크 자료 추가. 직접 만든 자료만(저작권), 공식 기출은 링크.
 
 ## 1단계 (2026-11-17 완료, 2026-11-18 배포)
 - 학생: 처음 여권 영문 이름·전화(선택) → 반 신청 → 입금 사진 → 입금 확인되면 [Darsga kirish] (출석 기록 + Zoom). UZ/RU 바꾸기.

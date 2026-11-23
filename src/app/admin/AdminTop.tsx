@@ -9,6 +9,7 @@ const TABS: { href: string; icon: string; label: string; plain?: boolean }[] = [
   { href: "/admin/cards", icon: "🌅", label: "카드" },
   { href: "/admin/news", icon: "📰", label: "소식" },
   { href: "/admin/exams", icon: "📅", label: "시험" },
+  { href: "/admin/library", icon: "📦", label: "자료" },
   { href: "/api/bot/setup", icon: "🤖", label: "봇 연결", plain: true },
   { href: "/home", icon: "👀", label: "학생 화면" },
 ];

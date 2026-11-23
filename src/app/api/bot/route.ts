@@ -1,25 +1,22 @@
 import { NextResponse } from "next/server";
-import { tgCall } from "@/lib/tg";
 import { webhookSecret } from "@/lib/bot";
+import { onMessage, onCallback, type Msg, type Cb } from "@/lib/botflow";
 
-// 텔레그램 → 우리 서버 (webhook). 1단계는 /start 에 [수업 홈] 버튼만 보냄.
+// 텔레그램 → 우리 서버 (webhook). 대화 흐름은 src/lib/botflow.ts
+// (구독 확인 → 메뉴: 자료·접수 도우미·시험 일정·온라인 수업·상담 / 대표가 보낸 파일 → 도서관 저장)
+export const maxDuration = 30;
 
-type Update = { message?: { chat: { id: number; type: string }; text?: string; from?: { language_code?: string } } };
+type Update = { message?: Msg; callback_query?: Cb };
 
 export async function POST(req: Request) {
   if (req.headers.get("x-telegram-bot-api-secret-token") !== webhookSecret()) return NextResponse.json({ ok: false }, { status: 401 });
   const up = (await req.json().catch(() => ({}))) as Update;
-  const m = up.message;
-  if (m && m.chat.type === "private" && m.text?.startsWith("/start")) {
-    const ru = m.from?.language_code === "ru";
-    const origin = new URL(req.url).origin;
-    await tgCall("sendMessage", {
-      chat_id: m.chat.id,
-      text: ru
-        ? "STORY Korean · TOPIK Online\n\nЗапись в группу, оплата, вход на урок и домашние задания — всё по кнопке ниже."
-        : "STORY Korean · TOPIK Online\n\nGuruhga yozilish, to'lov, darsga kirish va uy vazifalari — hammasi pastdagi tugmada.",
-      reply_markup: { inline_keyboard: [[{ text: ru ? "📚 Мои уроки" : "📚 Darslarim", web_app: { url: `${origin}/app` } }]] },
-    });
+  const origin = new URL(req.url).origin;
+  try {
+    if (up.message) await onMessage(up.message, origin);
+    else if (up.callback_query) await onCallback(up.callback_query);
+  } catch (e) {
+    console.error("[bot]", e); // 텔레그램엔 항상 200 — 아니면 같은 메시지를 계속 다시 보냄
   }
   return NextResponse.json({ ok: true });
 }
