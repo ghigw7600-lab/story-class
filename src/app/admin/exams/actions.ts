@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db, logEvent } from "@/lib/db";
 import { requireOwner } from "@/lib/session";
 import { EXAM_COLS, plan, postExamMsg, type ExamEvent } from "@/lib/exams";
+import { postSchedule } from "@/lib/schedule";
 
 const str = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const date = (f: FormData, k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(str(f, k)) ? str(f, k) : null);
@@ -47,4 +48,11 @@ export async function confirmExam(f: FormData) {
   await db().from("exam_events").update({ confirmed: on }).eq("id", Number(str(f, "id")));
   await logEvent(me.tg_id, "exam", str(f, "id"), on ? "공식 확인" : "예상으로");
   back("m=saved");
+}
+
+// [📌 일정표 카드 채널에 올리기] — 올리고 맨 위 고정까지
+export async function postScheduleNow(f: FormData) {
+  await requireOwner();
+  const r = await postSchedule(Number(str(f, "year")) || 2027);
+  back(r.ok ? `ok=${encodeURIComponent(r.msg)}` : `e=${encodeURIComponent(r.msg)}`);
 }

@@ -17,17 +17,17 @@ export type Card = {
 export const CARD_COLS = "id,kind,expr_ko,meaning_uz,meaning_ko,note_uz,examples,level,question,options,status,sort,posted_at,created_at";
 
 // ───────── 이미지 카드 (1080×1080, STORY 남색 + 태극 빨강·파랑) ─────────
-const NAVY = "#222260", RED = "#e0313f", BLUE = "#2f6fe0", SKY = "#8fb4ff";
+export const NAVY = "#222260", RED = "#e0313f", BLUE = "#2f6fe0", SKY = "#8fb4ff";
 
 // 구글 폰트에서 카드에 쓰인 글자만 잘라 받아 옴 (Noto Sans KR — 한국어·우즈벡어 라틴 모두)
-async function font(text: string, weight: number): Promise<ArrayBuffer> {
+export async function font(text: string, weight: number): Promise<ArrayBuffer> {
   const css = await fetch(`https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@${weight}&text=${encodeURIComponent(text)}`, { signal: AbortSignal.timeout(8000) }).then((r) => r.text());
   const url = css.match(/src: url\((.+?)\) format\('(opentype|truetype)'\)/)?.[1];
   if (!url) throw new Error("폰트를 못 받았어요");
   return fetch(url, { signal: AbortSignal.timeout(8000) }).then((r) => r.arrayBuffer());
 }
 
-const div = (style: Record<string, unknown>, ...children: ReactNode[]) => h("div", { style: { display: "flex", ...style } }, ...children);
+export const div = (style: Record<string, unknown>, ...children: ReactNode[]) => h("div", { style: { display: "flex", ...style } }, ...children);
 
 export async function renderExpression(c: Pick<Card, "expr_ko" | "meaning_uz" | "examples" | "level">): Promise<ArrayBuffer> {
   const expr = c.expr_ko ?? "";
@@ -78,14 +78,14 @@ const classButton = () => BOT_USERNAME
   : undefined;
 
 // ───────── 올리기 ─────────
-type TgRes = { ok: boolean; description?: string; result?: { message_id?: number } };
+export type TgRes = { ok: boolean; description?: string; result?: { message_id?: number } };
 
-async function sendPhoto(png: ArrayBuffer, caption: string): Promise<TgRes> {
+export async function sendPhoto(png: ArrayBuffer, caption: string, keyboard?: unknown): Promise<TgRes> {
   if (!BOT_TOKEN) return { ok: false, description: "BOT_TOKEN 없음" };
   const f = new FormData();
   f.set("chat_id", CHANNEL);
   f.set("caption", caption);
-  const kb = classButton();
+  const kb = keyboard ?? classButton();
   if (kb) f.set("reply_markup", JSON.stringify(kb));
   f.set("photo", new Blob([png], { type: "image/png" }), "story-korean.png");
   try {

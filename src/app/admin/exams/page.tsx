@@ -2,7 +2,7 @@ import { requireOwner } from "@/lib/session";
 import { db } from "@/lib/db";
 import { EXAM_COLS, plan, tashkentToday, type ExamEvent } from "@/lib/exams";
 import AdminTop from "../AdminTop";
-import { saveExam, toggleExam, postExamNow, confirmExam } from "./actions";
+import { saveExam, toggleExam, postExamNow, confirmExam, postScheduleNow } from "./actions";
 
 const MSG: Record<string, string> = { saved: "저장했어요.", posted: "채널에 올렸어요." };
 
@@ -30,9 +30,9 @@ function ExamForm({ e }: { e?: ExamEvent }) {
   );
 }
 
-export default async function ExamsAdmin({ searchParams }: { searchParams: Promise<{ m?: string; e?: string }> }) {
+export default async function ExamsAdmin({ searchParams }: { searchParams: Promise<{ m?: string; e?: string; ok?: string }> }) {
   await requireOwner();
-  const { m, e } = await searchParams;
+  const { m, e, ok } = await searchParams;
   const sb = db();
   const today = tashkentToday();
   const [{ data: events, error }, { data: posts }] = await Promise.all([
@@ -48,6 +48,7 @@ export default async function ExamsAdmin({ searchParams }: { searchParams: Promi
       <div className="wrap wide">
         {m && MSG[m] && <div className="notice ok">{MSG[m]}</div>}
         {e && <div className="notice err">{e}</div>}
+        {ok && <div className="notice ok">{ok}</div>}
         {error && <div className="notice err">시험 표가 아직 없거나 새 칸이 없어요 — Supabase SQL Editor에서 <b>0005</b>, <b>0006_exam_confirm.sql</b>을 실행해 주세요.</div>}
 
         <h1>📅 시험 일정 캠페인</h1>
@@ -58,6 +59,21 @@ export default async function ExamsAdmin({ searchParams }: { searchParams: Promi
             <b> 날짜는 꼭 공식 공지(topik.go.kr, 우즈벡 시행기관)로 확인</b>해서 넣어 주세요 — 우즈벡 시행일은 한국과 다를 수 있고, 한국에서만 보는 회차도 있어요(예: 2027년 1월 110회).
             우즈벡어 문구는 고정 틀이라 현지인에게 한 번 확인받으면 계속 써요.
           </p>
+        </div>
+
+        <h2>📌 채널 고정용 일정표 카드</h2>
+        <div className="card">
+          <div className="row" style={{ alignItems: "flex-start" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <a href="/admin/exams/card?year=2027" target="_blank"><img src={`/admin/exams/card?year=2027&v=${list.map((x) => `${x.id}${x.confirmed ? 1 : 0}${x.exam_date}`).join("")}`} alt="2027 일정표" width={216} height={270} style={{ borderRadius: 12 }} /></a>
+            <div className="grow">
+              <p className="muted" style={{ marginTop: 0 }}>
+                아래 일정으로 자동으로 그려져요. 예상 일정은 그림에 <b>TAXMINIY(예상)</b>, 공식 확인한 건 <b>RASMIY</b>로 표시돼요.
+                올리면 채널 맨 위에 고정까지 해요(봇에 고정 권한이 없으면 직접 고정 안내). 날짜를 고치거나 공식 확인하면 다시 올려 주세요.
+              </p>
+              <form action={postScheduleNow}><input type="hidden" name="year" value="2027" /><button className="btn primary">📌 2027 일정표 채널에 올리고 고정</button></form>
+            </div>
+          </div>
         </div>
 
         {list.map((ev) => (
