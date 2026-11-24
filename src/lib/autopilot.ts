@@ -4,7 +4,7 @@ import { db, logEvent } from "./db";
 import { BOT_USERNAME, OWNER_IDS } from "./env";
 import { CHANNEL, SIGN } from "./channel";
 import { CONSULT_BOT } from "./news";
-import { CARD_COLS2, NAVY, RED, BLUE, SKY, div, font, nextCard, sendPhoto, type Card } from "./cards";
+import { CARD_COLS2, CARD_COLS3, NAVY, RED, BLUE, SKY, div, font, nextCard, sendPhoto, type Card } from "./cards";
 import { getSetting, setSetting, autoApprove } from "./settings";
 import { runExamCampaign } from "./exams";
 import { tgCall } from "./tg";
@@ -178,6 +178,72 @@ export async function postConsult(force = false): Promise<string> {
   return "유학 상담 글 올림";
 }
 
+// ───────── ⑦ 재미 콘텐츠 (일요일) ─────────
+// 14시 = 글: kpop · drama · real · proverb  /  20시 = 참여: balance(투표) · food(메뉴판 읽기 챌린지)
+export const FUN_DAY = ["kpop", "drama", "real", "proverb"];
+export const FUN_NIGHT = ["balance", "food"];
+const FUN_HEAD: Record<string, string> = {
+  kpop: "🎵 K-pop bilan koreys tili", drama: "🎬 Dramalarda tez-tez eshitiladi", real: "😎 Darslikda vs hayotda", proverb: "📜 Koreys maqoli",
+};
+
+export async function renderFood(c: Pick<Card, "question" | "body_ko">): Promise<ArrayBuffer> {
+  const place = c.question ?? "분식집";
+  const rows = (c.body_ko ?? "").split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((r) => r[0]);
+  const TOP = "O‘qib bering!", BOTTOM = "Ovoz chiqarib o‘qing — izohlarda ovozli xabar qoldiring";
+  const all = [TOP, BOTTOM, place, "메뉴 MENU", ...rows.flat(), CHANNEL, "STORY Korean"].join("");
+  const [bold, black] = await Promise.all([font(all, 700), font(all, 900)]);
+  const CREAM = "#fff8ec", INK = "#3a2412";
+  const tree = div({ width: 1080, height: 1080, flexDirection: "column", padding: "60px 72px", background: `linear-gradient(150deg, #d9482b 0%, #b8321c 100%)`, fontFamily: "NotoKR", color: "#fff" },
+    div({ justifyContent: "space-between", alignItems: "center" },
+      div({ fontSize: 40, fontWeight: 900 }, TOP),
+      div({ fontSize: 28, fontWeight: 700, padding: "8px 22px", borderRadius: 40, border: "2px solid #ffd9c9" }, "STORY Korean")),
+    div({ flexGrow: 1, alignItems: "center" },
+      div({ flexDirection: "column", width: "100%", padding: "44px 56px", borderRadius: 28, background: CREAM, color: INK },
+        div({ justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18, paddingBottom: 18, borderBottom: `4px solid ${INK}` },
+          div({ fontSize: 58, fontWeight: 900 }, place), div({ fontSize: 30, fontWeight: 700, color: "#b8321c" }, "메뉴 MENU")),
+        ...rows.map((r) => div({ justifyContent: "space-between", fontSize: 46, fontWeight: 700, padding: "12px 0" }, div({}, r[0]), div({ color: "#b8321c" }, r[1] ?? ""))))),
+    div({ fontSize: 30, fontWeight: 700, color: "#ffe3d6", marginBottom: 22 }, BOTTOM),
+    div({ justifyContent: "space-between", fontSize: 30, fontWeight: 700 }, div({}, CHANNEL), div({ color: "#ffd9c9" }, "TOPIK · Koreys tili")),
+  );
+  return new ImageResponse(tree, { width: 1080, height: 1080, fonts: [{ name: "NotoKR", data: bold, weight: 700 }, { name: "NotoKR", data: black, weight: 900 }] }).arrayBuffer();
+}
+
+export async function postFun(c: Card): Promise<string> {
+  const tag = c.tag ?? "kpop";
+  let r: TgRes;
+  if (tag === "balance") {
+    const opts = (c.options ?? []).slice(0, 10);
+    if (opts.length < 2) return "투표 선택지가 2개 이상 필요해요";
+    r = (await tgCall("sendPoll", { chat_id: CHANNEL, question: `⚖️ ${c.question ?? ""}`.slice(0, 300), options: opts.map((t) => ({ text: t.slice(0, 100) })), is_anonymous: true })) as TgRes;
+  } else if (tag === "food") {
+    try {
+      const caption = `🍜 O‘qish challenji · ${c.question ?? ""}\n\n${c.body_uz || "Menyuni ovoz chiqarib o‘qing va izohlarda 🎙 ovozli xabar qoldiring! Qaysi taomni buyurtma qilardingiz?"}${SIGN}`;
+      r = await sendPhoto(await renderFood(c), caption.slice(0, 1024));
+    } catch (e) { return `메뉴판 그림 실패: ${String(e).slice(0, 80)}`; }
+  } else {
+    const ex = (c.examples ?? []).map((x) => `📝 ${x.ko}\n— ${x.uz}`).join("\n");
+    const head = `${FUN_HEAD[tag] ?? "✨"}\n\n🇰🇷 ${c.expr_ko ?? ""}${c.meaning_uz ? ` — ${c.meaning_uz}` : ""}`;
+    const kb = c.url ? { inline_keyboard: [[{ text: tag === "kpop" ? "▶️ Rasmiy MV (YouTube)" : "🔗 Ko‘rish", url: c.url }]] } : botBtn("channel");
+    r = await post(`${head}\n\n${c.body_uz ?? ""}${ex ? `\n\n${ex}` : ""}${SIGN}`, kb);
+  }
+  if (!r.ok) return `재미 콘텐츠 실패: ${r.description}`;
+  await markPosted(c.id, r.result?.message_id);
+  return `재미 콘텐츠 올림(#${c.id} ${tag})`;
+}
+
+async function postNextFun(tags: string[]): Promise<string> {
+  const sb = db();
+  const { data: last } = await sb.from("daily_cards").select("posted_at").eq("kind", "fun").in("tag", tags).not("posted_at", "is", null).order("posted_at", { ascending: false }).limit(1).maybeSingle();
+  if (last?.posted_at && Date.now() - Date.parse(last.posted_at) < 20 * HOUR) return "재미 콘텐츠 오늘 이미 올림";
+  const st = (await autoApprove()) ? ["approved", "draft"] : ["approved"];
+  const { data, error } = await sb.from("daily_cards").select(CARD_COLS3).eq("kind", "fun").in("tag", tags).in("status", st).order("sort").order("id").limit(1).maybeSingle();
+  if (error) return "재미 콘텐츠 표 확인 필요 (0009 SQL)";
+  if (!data) return "창고에 재미 콘텐츠가 없어요";
+  const r = await postFun(data as unknown as Card);
+  await logEvent(null, "auto", "fun", r);
+  return r;
+}
+
 // ───────── 시간대별 실행 ─────────
 async function postNextOf(kind: "writing" | "tip" | "question"): Promise<string> {
   if (await postedRecently(kind)) return `${kind} 오늘 이미 올림`;
@@ -189,17 +255,18 @@ async function postNextOf(kind: "writing" | "tip" | "question"): Promise<string>
   return r;
 }
 
-// 14시: 월·수·금 = 쓰기 연습(+지난 쓰기 정답) / 화·목·토 = 팁 / 일 = 쉼  + 시험 당일 실시간 글
+// 14시: 월·수·금 = 쓰기 연습(+지난 쓰기 정답) / 화·목·토 = 팁 / 일 = 재미(K-pop·드라마·실제 한국어·속담)  + 시험 당일 실시간 글
 export async function runAfternoon(): Promise<string[]> {
   const d = tashkentDow();
   const out: string[] = [];
   if (d === 1 || d === 3 || d === 5) { out.push(...await postWritingAnswers()); out.push(await postNextOf("writing")); }
   else if (d === 2 || d === 4 || d === 6) out.push(await postNextOf("tip"));
+  else out.push(await postNextFun(FUN_DAY)); // 일요일
   out.push(...await runExamCampaign("afternoon"));
   return out;
 }
 
-// 20시: 월·수·금·토 = 참여 질문 (매달 첫 토요일 = 유학 상담) / 화 = 자료 소개 / 목 = 수업 모집 / 일 = 쉼  + 시험 글
+// 20시: 월·수·금·토 = 참여 질문 (매달 첫 토요일 = 유학 상담) / 화 = 자료 소개 / 목 = 수업 모집 / 일 = 밸런스 게임·메뉴판 읽기  + 시험 글
 export async function runEvening(): Promise<string[]> {
   const now = tashkentNow();
   const d = now.getUTCDay();
@@ -208,22 +275,23 @@ export async function runEvening(): Promise<string[]> {
   else if (d === 1 || d === 3 || d === 5 || d === 6) out.push(await postNextOf("question"));
   else if (d === 2) out.push(await postLibraryDrop());
   else if (d === 4) out.push(await postRecruit());
+  else if (d === 0) out.push(await postNextFun(FUN_NIGHT));
   out.push(...await runExamCampaign("evening"));
   await logEvent(null, "auto", "evening", out.join(" · "));
   return out;
 }
 
 // ───────── 창고 점검: 남은 날 수 ─────────
-// 한 주에 쓰는 양: 표현 7 · 투표 2 · 쓰기 3 · 팁 3 · 질문 4 · 퀴즈 6
-export const PER_WEEK: Record<string, number> = { expression: 7, poll: 2, writing: 3, tip: 3, question: 4, quiz: 6 };
-export const KIND_KO: Record<string, string> = { expression: "표현 카드", poll: "투표", writing: "쓰기 연습", tip: "팁", question: "참여 질문", quiz: "퀴즈" };
+// 한 주에 쓰는 양: 표현 7 · 투표 2 · 쓰기 3 · 팁 3 · 질문 4 · 재미 2 · 퀴즈 6
+export const PER_WEEK: Record<string, number> = { expression: 7, poll: 2, writing: 3, tip: 3, question: 4, fun: 2, quiz: 6 };
+export const KIND_KO: Record<string, string> = { expression: "표현 카드", poll: "투표", writing: "쓰기 연습", tip: "팁", question: "참여 질문", fun: "재미 콘텐츠", quiz: "퀴즈" };
 
 export async function stock(): Promise<{ kind: string; left: number; days: number }[]> {
   const sb = db();
   const auto = await autoApprove();
   const st = auto ? ["draft", "approved"] : ["approved"];
   const out: { kind: string; left: number; days: number }[] = [];
-  for (const kind of ["expression", "poll", "writing", "tip", "question"]) {
+  for (const kind of ["expression", "poll", "writing", "tip", "question", "fun"]) {
     const { count } = await sb.from("daily_cards").select("id", { count: "exact", head: true }).eq("kind", kind).in("status", st);
     out.push({ kind, left: count ?? 0, days: Math.floor(((count ?? 0) / PER_WEEK[kind]) * 7) });
   }

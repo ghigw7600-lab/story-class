@@ -1,7 +1,7 @@
 import { requireOwner } from "@/lib/session";
 import { db } from "@/lib/db";
 import { autoApprove } from "@/lib/settings";
-import { CARD_COLS2, type Card } from "@/lib/cards";
+import { CARD_COLS2, CARD_COLS3, type Card } from "@/lib/cards";
 import { stock, KIND_KO } from "@/lib/autopilot";
 import AdminTop from "../AdminTop";
 import { toggleAuto, rejectItem, saveItem, postNow } from "./actions";
@@ -9,6 +9,7 @@ import { toggleAuto, rejectItem, saveItem, postNow } from "./actions";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+const FUN_KO: Record<string, string> = { kpop: "K-pop 표현", drama: "드라마 표현", real: "교과서 vs 실제", proverb: "속담", balance: "밸런스 게임", food: "메뉴판 읽기" };
 const MSG: Record<string, string> = {
   on: "자동 승인을 켰어요 — 창고의 글이 승인 없이 순서대로 올라가요.", off: "자동 승인을 껐어요 — [🌅 카드]에서 승인한 것만 올라가요.",
   rejected: "버렸어요 (안 올라가요).", saved: "고친 내용을 저장했어요.", posted: "채널에 올렸어요.",
@@ -22,24 +23,42 @@ const WEEK: [string, string, string, string, string][] = [
   ["목", "표현 카드", "어휘·문법 팁", "퀴즈", "📢 수업 모집 (반 없으면 대기 명단)"],
   ["금", "표현 카드 + 투표", "쓰기 연습 (+지난 정답)", "퀴즈", "참여 질문"],
   ["토", "표현 카드", "어휘·문법 팁", "퀴즈", "참여 질문 (첫 토요일 = 🎓 유학 상담)"],
-  ["일", "표현 카드", "—", "주간 정답 모음", "—"],
+  ["일", "표현 카드", "🎵 재미: K-pop·드라마·실제 한국어·속담", "주간 정답 모음", "🎮 재미: 밸런스 게임 투표·메뉴판 읽기 챌린지"],
 ];
+
+function FunFields({ c }: { c: Card }) {
+  if (c.tag === "balance") return <>
+    <label>질문 (우즈벡어)<input className="input" name="question" defaultValue={c.question ?? ""} /></label>
+    <label>선택지 (한 줄에 하나)<textarea className="input" name="options" rows={3} defaultValue={(c.options ?? []).join("\n")} /></label>
+  </>;
+  if (c.tag === "food") return <>
+    <label>가게 이름 (한국어)<input className="input" name="question" defaultValue={c.question ?? ""} /></label>
+    <label>메뉴 (한 줄에 &quot;이름 | 가격&quot;)<textarea className="input" name="body_ko" rows={5} defaultValue={c.body_ko ?? ""} /></label>
+  </>;
+  return <>
+    <label>표현 (한국어)<input className="input" name="expr_ko" defaultValue={c.expr_ko ?? ""} /></label>
+    <label>뜻 (우즈벡어)<input className="input" name="meaning_uz" defaultValue={c.meaning_uz ?? ""} /></label>
+    <label>설명 (우즈벡어)<textarea className="input" name="body_uz" rows={5} defaultValue={c.body_uz ?? ""} /></label>
+  </>;
+}
 
 function Item({ c }: { c: Card }) {
   return (
     <form className="card" id={`i${c.id}`}>
       <input type="hidden" name="id" value={c.id} />
       <div className="row" style={{ alignItems: "flex-start" }}>
-        {c.kind === "writing" && (
+        {(c.kind === "writing" || (c.kind === "fun" && c.tag === "food")) && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`/admin/auto/img/${c.id}?v=${encodeURIComponent((c.body_ko ?? "").slice(0, 40))}`} alt="" width={220} height={220} style={{ borderRadius: 12, flexShrink: 0 }} />
         )}
         <div className="grow">
-          {c.status === "approved" && <span className="badge ok">승인됨</span>} <span className="muted">#{c.id}{c.tag ? ` · ${c.tag}` : ""}</span>
+          {c.status === "approved" && <span className="badge ok">승인됨</span>} <span className="muted">#{c.id}{c.tag ? ` · ${FUN_KO[c.tag] ?? c.tag}` : ""}</span>
+          {c.kind === "fun" ? <FunFields c={c} /> : <>
           {c.kind === "question" && <label>질문 (우즈벡어)<input className="input" name="question" defaultValue={c.question ?? ""} /></label>}
           {c.kind !== "question" && <label>{c.kind === "writing" ? "문제 글 (한국어, ㉠ ㉡ 빈칸)" : "제목 (한국어)"}<textarea className="input" name="body_ko" rows={c.kind === "writing" ? 4 : 1} defaultValue={c.body_ko ?? ""} /></label>}
           <label>{c.kind === "tip" ? "설명 (우즈벡어)" : "덧붙임 (우즈벡어, 비우면 기본 문구)"}<textarea className="input" name="body_uz" rows={c.kind === "tip" ? 6 : 2} defaultValue={c.body_uz ?? ""} /></label>
           {c.kind === "writing" && <label>모범답안 (다음 쓰기 날 답장으로 올라감)<textarea className="input" name="answer" rows={2} defaultValue={c.answer ?? ""} /></label>}
+          </>}
           {c.meaning_ko && <p className="muted" style={{ margin: "4px 0 0" }}>한국어 뜻: {c.meaning_ko}</p>}
         </div>
       </div>
@@ -58,12 +77,14 @@ export default async function AutoAdmin({ searchParams }: { searchParams: Promis
   const { m, e, r } = await searchParams;
   const sb = db();
   const auto = await autoApprove();
-  const [st, { data: items, error }, { count: wait }, { count: botUsers }] = await Promise.all([
+  const [st, { data: items, error }, { count: wait }, { count: botUsers }, { data: funs, error: funErr }] = await Promise.all([
     stock().catch(() => []),
     sb.from("daily_cards").select(CARD_COLS2).in("kind", ["writing", "tip", "question"]).in("status", auto ? ["draft", "approved"] : ["approved", "draft"]).order("sort").order("id"),
     sb.from("bot_users").select("tg_id", { count: "exact", head: true }).not("waitlist_at", "is", null),
     sb.from("bot_users").select("tg_id", { count: "exact", head: true }),
+    sb.from("daily_cards").select(CARD_COLS3).eq("kind", "fun").in("status", ["draft", "approved"]).order("sort").order("id"),
   ]);
+  const funList = (funs ?? []) as unknown as Card[];
   const list = (items ?? []) as unknown as Card[];
   const of = (k: string) => list.filter((c) => c.kind === k);
 
@@ -119,6 +140,7 @@ export default async function AutoAdmin({ searchParams }: { searchParams: Promis
           <p className="muted" style={{ marginBottom: 0 }}>봇 사용자 <b>{botUsers ?? 0}명</b> · 수업 대기 명단 <b>{wait ?? 0}명</b> (대기 명단에 들어오면 봇으로 바로 알려 드려요)</p>
         </div>
 
+        {funErr && !error && <div className="notice err">재미 콘텐츠는 <b>0009_fun.sql</b>을 실행해야 보여요.</div>}
         {(["writing", "tip", "question"] as const).map((k) => (
           <section key={k}>
             <h2>다음 {KIND_KO[k]} ({of(k).length}개) <span className="muted" style={{ fontSize: 14 }}>— 위에서부터 순서대로, 5개만 보여요</span></h2>
@@ -126,6 +148,11 @@ export default async function AutoAdmin({ searchParams }: { searchParams: Promis
             {of(k).slice(0, 5).map((c) => <Item key={c.id} c={c} />)}
           </section>
         ))}
+        <section>
+          <h2>다음 재미 콘텐츠 ({funList.length}개) <span className="muted" style={{ fontSize: 14 }}>— 일요일 14시·20시, 5개만 보여요</span></h2>
+          {!funList.length && <p className="muted">창고가 비었어요.</p>}
+          {funList.slice(0, 5).map((c) => <Item key={c.id} c={c} />)}
+        </section>
       </div>
     </>
   );

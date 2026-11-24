@@ -9,16 +9,18 @@ import { tgCall } from "./tg";
 import { autoApprove } from "./settings";
 
 export type Card = {
-  id: number; kind: "expression" | "poll" | "writing" | "tip" | "question";
+  id: number; kind: "expression" | "poll" | "writing" | "tip" | "question" | "fun";
   expr_ko: string | null; meaning_uz: string | null; meaning_ko: string | null; note_uz: string | null;
   examples: { ko: string; uz: string }[]; level: string | null;
   question: string | null; options: string[] | null;
   status: "draft" | "approved" | "posted" | "rejected"; sort: number; posted_at: string | null; created_at: string;
   // 0008: writing · tip · question
   tag?: string | null; body_ko?: string | null; body_uz?: string | null; answer?: string | null; answer_posted_at?: string | null; message_id?: number | null;
+  url?: string | null; // 0009: fun
 };
 export const CARD_COLS = "id,kind,expr_ko,meaning_uz,meaning_ko,note_uz,examples,level,question,options,status,sort,posted_at,created_at";
 export const CARD_COLS2 = CARD_COLS + ",tag,body_ko,body_uz,answer,answer_posted_at,message_id";
+export const CARD_COLS3 = CARD_COLS2 + ",url"; // 0009 뒤에만
 
 // ───────── 이미지 카드 (1080×1080, STORY 남색 + 태극 빨강·파랑) ─────────
 export const NAVY = "#222260", RED = "#e0313f", BLUE = "#2f6fe0", SKY = "#8fb4ff";
