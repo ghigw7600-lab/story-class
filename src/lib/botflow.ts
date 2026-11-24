@@ -1,6 +1,7 @@
 import "server-only";
 import { db, logEvent } from "./db";
 import { tgCall } from "./tg";
+import { notifyOwners } from "./notify";
 import { isOwnerId } from "./env";
 import { CHANNEL } from "./channel";
 import { CONSULT_BOT } from "./news";
@@ -44,6 +45,7 @@ const T = {
     schEmpty: "📅 Yaqin imtihon sanalari hali e’lon qilinmagan. Kanalimizni kuzatib boring!",
     classesText: "🎓 STORY Korean onlayn TOPIK darslari — guruhlar, jadval va ro‘yxatdan o‘tish 👇", classesBtn: "📚 Darslarni ko‘rish",
     consultText: "💬 Koreyada o‘qish (til kursi D-4, bakalavr D-2, magistratura) bo‘yicha bepul konsultatsiya — STORY CONSULTING 👇",
+    waitOk: "🔔 Navbatga yozildingiz! Yangi guruhga qabul ochilganda birinchi bo‘lib shu botda xabar beramiz.\n\nShu orada kanalimizdagi bepul mashqlarni qiling 💪",
     date: uzDate,
   },
   ko: {
@@ -66,6 +68,7 @@ const T = {
     schEmpty: "📅 가까운 시험 날짜가 아직 없어요. 관리 화면 [📅 시험]에서 넣어 주세요.",
     classesText: "🎓 STORY Korean 온라인 TOPIK 수업 — 반·시간표·신청 👇", classesBtn: "📚 수업 보기",
     consultText: "💬 한국 유학(어학연수 D-4·학사 D-2·석사) 무료 상담 — STORY CONSULTING 👇",
+    waitOk: "🔔 대기 명단에 넣었어요. 새 반 신청이 열리면 이 봇으로 먼저 알려 드려요.",
     date: KR_DATE,
   },
 };
@@ -190,6 +193,29 @@ async function sendSchedule(chatId: number, l: L) {
   await tgCall("sendMessage", { chat_id: chatId, text, reply_markup: { inline_keyboard: [[{ text: t.reg, callback_data: "reg" }]] } });
 }
 
+// ───────── 채널 글 버튼으로 들어온 경우 (/start 뒤 값) ─────────
+//  lib_<번호> = 자료 바로 받기 · wait = 수업 대기 명단 · classes = 수업 보기 · reg = 접수 도우미
+async function handleSource(chatId: number, from: From, source: string | null, l: L, origin: string) {
+  const t = T[l];
+  if (!source) return;
+  if (source === "reg") return sendRegGuide(chatId, l);
+  if (source.startsWith("lib_")) return sendItem(chatId, Number(source.slice(4)), l);
+  if (source === "classes") {
+    await tgCall("sendMessage", { chat_id: chatId, text: t.classesText, reply_markup: { inline_keyboard: [[{ text: t.classesBtn, web_app: { url: `${origin}/app` } }]] } });
+    return;
+  }
+  if (source === "wait") {
+    const { data } = await db().from("bot_users").select("waitlist_at").eq("tg_id", from.id).maybeSingle();
+    if (!data?.waitlist_at) {
+      await db().from("bot_users").update({ waitlist_at: new Date().toISOString() }).eq("tg_id", from.id);
+      const { count } = await db().from("bot_users").select("tg_id", { count: "exact", head: true }).not("waitlist_at", "is", null);
+      await notifyOwners(`🔔 수업 대기 명단 +1: ${from.first_name ?? ""}${from.username ? ` (@${from.username})` : ""} — 지금 ${count ?? "?"}명`);
+      await logEvent(from.id, "bot", "waitlist", "대기 명단");
+    }
+    await tgCall("sendMessage", { chat_id: chatId, text: t.waitOk });
+  }
+}
+
 // ───────── 대표: 파일을 보내면 도서관에 저장 ─────────
 async function ownerUpload(m: Msg): Promise<boolean> {
   const f = m.document ? { ...m.document, type: "document" } : m.audio ? { ...m.audio, type: "audio" } : m.video ? { ...m.video, type: "video" } : m.photo?.length ? { ...m.photo[m.photo.length - 1], type: "photo" } : null;
@@ -233,7 +259,7 @@ export async function onMessage(m: Msg, origin: string) {
     await remember(from, { source, subscribed: sub });
     if (!sub) { await askToSubscribe(m.chat.id, t); return; }
     await sendMenu(m.chat.id, t, true, ownerTip);
-    if (source === "reg") await sendRegGuide(m.chat.id, l);
+    await handleSource(m.chat.id, from, source, l, origin);
     return;
   }
 
@@ -256,7 +282,7 @@ export async function onMessage(m: Msg, origin: string) {
   await sendMenu(m.chat.id, t, false, ownerTip);
 }
 
-export async function onCallback(c: Cb) {
+export async function onCallback(c: Cb, origin = "") {
   const chatId = c.message?.chat.id ?? c.from.id;
   const data = c.data ?? "";
   const l = await langOf(c.from);
@@ -265,7 +291,13 @@ export async function onCallback(c: Cb) {
     const sub = await isSubscribed(c.from.id);
     await remember(c.from, { subscribed: sub });
     await tgCall("answerCallbackQuery", { callback_query_id: c.id, text: sub ? t.subOk : t.subNo, show_alert: !sub });
-    if (sub) { await sendMenu(chatId, t); await logEvent(c.from.id, "bot", "subscribe", "구독 확인"); }
+    if (sub) {
+      await sendMenu(chatId, t);
+      await logEvent(c.from.id, "bot", "subscribe", "구독 확인");
+      // 채널 버튼(자료 받기·대기 명단)으로 왔다가 구독부터 한 경우 → 원래 하려던 것 이어서
+      const { data } = await db().from("bot_users").select("source").eq("tg_id", c.from.id).maybeSingle();
+      await handleSource(chatId, c.from, data?.source ?? null, l, origin);
+    }
     return;
   }
   await tgCall("answerCallbackQuery", { callback_query_id: c.id });

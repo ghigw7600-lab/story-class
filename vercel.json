@@ -4,6 +4,8 @@
     { "path": "/api/cron/news-collect", "schedule": "0 3 * * *" },
     { "path": "/api/cron/morning", "schedule": "0 5 * * *" },
     { "path": "/api/cron/news-post", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/channel", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/afternoon", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/channel", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/evening", "schedule": "0 15 * * *" }
   ]
 }

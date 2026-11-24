@@ -6,15 +6,19 @@ import { BOT_TOKEN, BOT_USERNAME } from "./env";
 import { CHANNEL, SIGN } from "./channel";
 import { claudeJSON, hasClaude } from "./claude";
 import { tgCall } from "./tg";
+import { autoApprove } from "./settings";
 
 export type Card = {
-  id: number; kind: "expression" | "poll";
+  id: number; kind: "expression" | "poll" | "writing" | "tip" | "question";
   expr_ko: string | null; meaning_uz: string | null; meaning_ko: string | null; note_uz: string | null;
   examples: { ko: string; uz: string }[]; level: string | null;
   question: string | null; options: string[] | null;
   status: "draft" | "approved" | "posted" | "rejected"; sort: number; posted_at: string | null; created_at: string;
+  // 0008: writing · tip · question
+  tag?: string | null; body_ko?: string | null; body_uz?: string | null; answer?: string | null; answer_posted_at?: string | null; message_id?: number | null;
 };
 export const CARD_COLS = "id,kind,expr_ko,meaning_uz,meaning_ko,note_uz,examples,level,question,options,status,sort,posted_at,created_at";
+export const CARD_COLS2 = CARD_COLS + ",tag,body_ko,body_uz,answer,answer_posted_at,message_id";
 
 // ───────── 이미지 카드 (1080×1080, STORY 남색 + 태극 빨강·파랑) ─────────
 export const NAVY = "#222260", RED = "#e0313f", BLUE = "#2f6fe0", SKY = "#8fb4ff";
@@ -109,11 +113,21 @@ export async function postCard(c: Card): Promise<{ ok: boolean; error?: string }
   return { ok: true };
 }
 
-export async function postNextCard(kind: Card["kind"]): Promise<string> {
-  const { data } = await db().from("daily_cards").select(CARD_COLS).eq("kind", kind).eq("status", "approved").order("sort").order("id").limit(1).maybeSingle();
+// 다음에 올릴 카드: 승인된 것 먼저, 자동 승인이 켜져 있으면 초안도 (버린 것은 제외)
+export async function nextCard(kind: Card["kind"]): Promise<Card | null> {
+  const sb = db();
+  const { data } = await sb.from("daily_cards").select(CARD_COLS2).eq("kind", kind).eq("status", "approved").order("sort").order("id").limit(1).maybeSingle();
+  if (data) return data as unknown as Card;
+  if (!(await autoApprove())) return null;
+  const { data: d2 } = await sb.from("daily_cards").select(CARD_COLS2).eq("kind", kind).eq("status", "draft").order("sort").order("id").limit(1).maybeSingle();
+  return (d2 as unknown as Card) ?? null;
+}
+
+export async function postNextCard(kind: "expression" | "poll"): Promise<string> {
+  const data = await nextCard(kind);
   const name = kind === "expression" ? "표현 카드" : "참여 투표";
   if (!data) return `승인된 ${name}가 없어요`;
-  const r = await postCard(data as Card);
+  const r = await postCard(data);
   await logEvent(null, "card", String(data.id), r.ok ? `${name} 올림` : `${name} 실패: ${r.error}`);
   return r.ok ? `${name} 올림(#${data.id})` : `${name} 실패: ${r.error}`;
 }

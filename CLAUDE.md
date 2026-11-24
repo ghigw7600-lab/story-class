@@ -85,6 +85,14 @@
 - ② 봇 도서관 + 구독 확인 + 접수 도우미(`src/lib/botflow.ts`, 0007 `library_items`·`bot_users`·`library_hit()`): /start(+source) → getChatMember로 @storytopik 구독 확인(봇 권한 문제면 막지 않음) → 안 했으면 [채널]·[✅ Tasdiqlash] → 메뉴(reply keyboard): 📚 Materiallar(분류 tests·writing·words·guide → 자료 → file_id로 다시 보냄, 다운로드 수) · 📝 Ro‘yxatdan o‘tish yordami(4단계 안내 + 다음 시험·접수일, topiktashkec.uz·상담 버튼) · 📅 TOPIK jadvali · 🎓 Onlayn darslar(미니앱) · 💬 Konsultatsiya(@storyconsulting_bot). 자료·도우미는 구독자만. **대표가 봇에 파일 + 캡션 `#tests 제목`을 보내면 저장**. webhook allowed_updates에 callback_query 추가 → 배포 후 [🤖 봇 연결] 다시 눌러야 함. 대표 화면 [📦 자료]: 봇 사용자 수·구독 수·자료 목록(이름·분류·순서·숨기기)·링크 자료 추가. 직접 만든 자료만(저작권), 공식 기출은 링크.
 - 봇 한국어 화면(2026-11-23, 대표 요청 "내가 쓸 땐 한국어로"): 대표(OWNER_IDS)는 기본 한국어(메뉴: 자료실·접수 도우미·시험 일정·온라인 수업·유학 상담), `/uz` = 학생 화면(우즈벡어) 보기, `/ko` = 한국어로. 보기 설정은 bot_users.lang = 'view:uz'|'view:ko'(대표 줄은 language_code로 덮어쓰지 않음). 텔레그램 언어가 ko인 사용자도 한국어. 메뉴 버튼은 두 말 모두 알아들음. 자료 캡션(Manba)은 우즈벡어 고정.
 
+## 자동 운영 — 대표 할 일 최소화 (2026-11-24, 대표 "진행해줘")
+- 모델: **ONLINE TOPIK @onlinetopik** (19.3천, Madina Azamatovna 6급) — 하루 8~9개(시험 당일 25개), 타슈켄트 13~16시에 몰림, 평균 조회 3.6천. 조회 상위 = 시험 당일 실시간 글·인쇄용 PDF·"#51쓰기 yozib ko‘ring" 사진·합격 성적표. 수업(Zoom 월 50만 숨, "정해진 날에만 신청" 희소성)·유학원 제휴(Unique Consulting 무료 상담 신청서·생방송)·광고. 분리 채널: 사전·고급반·결과. 사람이 하는 부분(음성·동그라미 영상·생방송·잔소리)은 자동화 X.
+- 0008 `settings`(auto_approve 기본 on → 창고 초안도 승인 없이 순서대로) · daily_cards 새 종류 writing(쓰기 51·52 사진, 다음 쓰기 날 모범답안을 답장으로)·tip(어휘·문법·TOPIK 요령)·question(참여 질문) · library_items.channel_posted_at · bot_users.waitlist_at.
+- 하루 일정(타슈켄트): 10시 표현(+화·금 투표) · **14시** 월수금 쓰기/화목토 팁 (`/api/cron/afternoon` 09 UTC) · 18시 퀴즈(일 = 주간 정답) · **20시** 월수금토 질문 / 화 자료 소개(봇 ?start=lib_N → 구독 확인 → 파일) / 목 수업 모집(열린 반 없으면 대기 명단 ?start=wait → 대표 알림) / 첫 토요일 유학 상담 (`/api/cron/evening` 15 UTC). `src/lib/autopilot.ts`.
+- 시험 캠페인 보강(`exams.ts` slot): 당일 10시 응원 · 14시 "TOPIK I 어땠어요?"+투표 · 20시 "TOPIK II 어땠어요? 51·52 답 댓글로"+투표(IBT는 한 번) · 다음 날 결과 발표일 안내 · 성적 발표 D-7·3·1.
+- 창고: `supabase/seed/autopilot_content.sql` (쓰기 26·팁 26·질문 35·표현 30·투표 10·퀴즈 25, 자체 작성·기출 아님). 2주 치 밑이면 월요일 아침 대표에게 봇 알림 → 대화에서 "다음 묶음" 요청. 대표 화면 [⚙️ 자동]: 스위치·남은 날 수·일정표·다음 글 미리보기·버리기·지금 올리기.
+- 대표 할 일: 상담 응대, 공식 시험 공지 뜨면 [공식 확인], (권장) 주 1회 30초 음성.
+
 ## 1단계 (2026-11-17 완료, 2026-11-18 배포)
 - 학생: 처음 여권 영문 이름·전화(선택) → 반 신청 → 입금 사진 → 입금 확인되면 [Darsga kirish] (출석 기록 + Zoom). UZ/RU 바꾸기.
 - 대표(/admin): 오늘 숫자(입금 확인 대기·수강 중·오늘 수업), 입금 사진 보고 [✔ 입금 확인](학생에게 봇 알림), 반 목록·만들기. 반 화면: 최근 4주 출석표(✔ △ ✕ ○·출석률), 명단·그만둠, 반 정보·Zoom 링크·강사.

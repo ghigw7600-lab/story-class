@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const origin = new URL(req.url).origin;
   try {
     if (up.message) await onMessage(up.message, origin);
-    else if (up.callback_query) await onCallback(up.callback_query);
+    else if (up.callback_query) await onCallback(up.callback_query, origin);
   } catch (e) {
     console.error("[bot]", e); // 텔레그램엔 항상 200 — 아니면 같은 메시지를 계속 다시 보냄
   }

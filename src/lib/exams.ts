@@ -21,7 +21,8 @@ export const tashkentToday = () => new Date(Date.now() + 5 * 3600_000).toISOStri
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10);
 
 type Btn = "class" | "consult";
-type Msg = { trigger: string; label: string; date: string; text: string; btn: Btn; poll?: { question: string; options: string[] } };
+export type Slot = "morning" | "afternoon" | "evening"; // 타슈켄트 10시 · 14시 · 20시
+type Msg = { trigger: string; label: string; date: string; text: string; btn: Btn; slot?: Slot; poll?: { question: string; options: string[] } };
 
 const TIPS: Record<number, string> = {
   30: "📌 Hozirdan har kuni 1 ta test ishlang va xatolaringizni yozib boring. 30 kun — juda katta vaqt!",
@@ -45,9 +46,24 @@ export function plan(e: ExamEvent): Msg[] {
     text: `🔥 Ertaga — ${n}!\n\n✅ Pasport / ID karta\n✅ Imtihon joyi va vaqti\n✅ Erta uxlang, ertalab nonushta qiling\n\nHammaga omad! 시험 잘 보세요! 🍀` });
   out.push({ trigger: "d0", label: "시험 당일", date: e.exam_date, btn: "class",
     text: `🍀 Bugun ${n} kuni!\n\n여러분, 모두 시험 잘 보세요! 💪\nShoshilmang, qiyin savolda ko‘p to‘xtamang — keyin qayting.` });
+  // 시험 당일 실시간 (경쟁 채널 조회수 1위 시간대) — PBT는 TOPIK I·II 따로, IBT는 한 번
+  const ibt = /ibt/i.test(n);
+  if (!ibt) out.push({ trigger: "d0_t1", label: "당일 · TOPIK I 어땠어요?", date: e.exam_date, slot: "afternoon", btn: "class",
+    text: `📝 ${n} — TOPIK I qanday o‘tdi?\n\nQaysi savollar qiyin bo‘ldi? 듣기 yoki 읽기? Izohlarda yozing 👇`,
+    poll: { question: "TOPIK I qanday o‘tdi? 🤔", options: ["😎 Oson", "🙂 O‘rtacha", "😵 Qiyin", "😭 듣기 juda qiyin"] } });
+  out.push({ trigger: "d0_t2", label: ibt ? "당일 · 시험 어땠어요?" : "당일 · TOPIK II 어땠어요?", date: e.exam_date, slot: "evening", btn: "class",
+    text: ibt
+      ? `📝 ${n} qanday o‘tdi?\n\nQaysi qism qiyin bo‘ldi? Izohlarda yozing 👇`
+      : `📝 ${n} — TOPIK II qanday o‘tdi?\n\n51–52 쓰기 ga nima deb yozdingiz? Javoblaringizni izohlarda yozing — birga tekshiramiz 👇`,
+    poll: { question: ibt ? `${n} qanday o‘tdi? 🤔` : "TOPIK II qanday o‘tdi? 🤔", options: ["😎 Oson", "🙂 O‘rtacha", "😵 Qiyin", "😭 쓰기 juda qiyin"] } });
   out.push({ trigger: "after1", label: "시험 다음 날", date: addDays(e.exam_date, 1), btn: "class",
-    text: `📝 ${n} qanday o‘tdi?\n\nQaysi qism qiyin bo‘ldi? Izohlarda yozing 👇`,
-    poll: { question: `${n} qanday o‘tdi? 🤔`, options: ["😎 Oson bo‘ldi", "🙂 O‘rtacha", "😵 Qiyin bo‘ldi", "😭 듣기 juda qiyin edi"] } });
+    text: `💪 ${n} tugadi — hammangizga rahmat!\n\n${e.result_date ? `📊 Natijalar ${uzDate(e.result_date)} kuni chiqadi.\n\n` : ""}Natijani kutib o‘tirmang: keyingi imtihonga hozirdan tayyorlansangiz, darajangizni oshirasiz. Kanalda har kuni yangi mashqlar 👇` });
+  // 성적 발표 카운트다운
+  if (e.result_date) for (const d of [7, 3, 1]) {
+    const date = addDays(e.result_date, -d);
+    if (date > addDays(e.exam_date, 1)) out.push({ trigger: `r${d}`, label: `성적 발표 D-${d}`, date, btn: "class",
+      text: `⏳ ${n} natijalari chiqishiga ${d} kun qoldi!\n\n📊 Natija: ${uzDate(e.result_date)}, topik.go.kr saytida.\nQaysi darajani kutyapsiz? Izohlarda yozing 👇` });
+  }
   if (e.result_date) out.push({ trigger: "result", label: "성적 발표", date: e.result_date, btn: "consult",
     text: `📊 ${n} natijalari chiqdi!\n\nNatijani topik.go.kr saytida tekshiring. Necha daraja oldingiz? Izohlarda yozing 🎉\n\nTOPIK bor — endi Koreyada o‘qish vaqti! Universitet tanlashda yordam kerak bo‘lsa, bizga yozing 👇` });
   return out.sort((a, b) => a.date.localeCompare(b.date));
@@ -67,14 +83,14 @@ export async function postExamMsg(e: ExamEvent, m: Msg): Promise<string> {
 }
 
 // 매일 아침: 오늘 날짜에 해당하고 아직 안 올린 글만
-export async function runExamCampaign(): Promise<string[]> {
+export async function runExamCampaign(slot: Slot = "morning"): Promise<string[]> {
   const sb = db();
   const today = tashkentToday();
   const { data: events, error } = await sb.from("exam_events").select(EXAM_COLS).eq("active", true).eq("confirmed", true).gte("exam_date", addDays(today, -60));
   if (error) return [];
   const out: string[] = [];
   for (const e of (events ?? []) as ExamEvent[]) {
-    const due = plan(e).filter((m) => m.date === today);
+    const due = plan(e).filter((m) => m.date === today && (m.slot ?? "morning") === slot);
     if (!due.length) continue;
     const { data: done } = await sb.from("exam_posts").select("trigger").eq("event_id", e.id);
     const doneSet = new Set((done ?? []).map((d) => d.trigger));

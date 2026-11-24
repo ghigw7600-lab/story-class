@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 // 대표 화면 위쪽: 1줄 = 이름·로그아웃 / 2줄 = 아이콘 탭 (휴대폰에서 한 줄로 보이고, 좁으면 옆으로 밀어 봄)
 const TABS: { href: string; icon: string; label: string; plain?: boolean }[] = [
   { href: "/admin", icon: "🏠", label: "홈" },
+  { href: "/admin/auto", icon: "⚙️", label: "자동" },
   { href: "/admin/channel", icon: "📢", label: "퀴즈" },
   { href: "/admin/cards", icon: "🌅", label: "카드" },
   { href: "/admin/news", icon: "📰", label: "소식" },

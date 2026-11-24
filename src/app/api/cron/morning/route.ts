@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { postNextCard } from "@/lib/cards";
 import { runExamCampaign } from "@/lib/exams";
+import { stockAlert } from "@/lib/autopilot";
 import { cronOk } from "@/lib/cron";
 import { OWNER_IDS } from "@/lib/env";
 import { tgCall } from "@/lib/tg";
@@ -16,13 +17,14 @@ export async function GET(req: Request) {
   if (day === 2 || day === 5) out.push(await postNextCard("poll"));
   const exam = await runExamCampaign(); // 시험 일정 캠페인 (오늘 해당하는 글만)
   // 올릴 게 없었으면 대표에게 알림
+  const origin = new URL(req.url).origin;
+  const stockMsg = await stockAlert(origin); // 월요일: 창고가 2주 치 밑이면 알림
   const empty = out.filter((s) => s.startsWith("승인된"));
   if (empty.length) {
-    const origin = new URL(req.url).origin;
     await Promise.all(OWNER_IDS.map((id) => tgCall("sendMessage", {
-      chat_id: id, text: `🌅 아침 카드: ${empty.join(", ")}. 초안을 확인하고 [승인]해 주세요.`,
+      chat_id: id, text: `🌅 아침 카드: ${empty.join(", ")}. 창고가 비었거나(자동 승인 꺼짐이면) 승인할 초안이 있어요.`,
       reply_markup: { inline_keyboard: [[{ text: "🌅 아침 카드 확인", web_app: { url: `${origin}/app?to=/admin/cards` } }]] },
     })));
   }
-  return NextResponse.json({ ok: true, result: out, exam });
+  return NextResponse.json({ ok: true, result: out, exam, stock: stockMsg });
 }
