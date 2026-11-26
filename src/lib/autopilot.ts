@@ -69,7 +69,7 @@ async function postWritingAnswers(): Promise<string[]> {
   const { data } = await db().from("daily_cards").select(CARD_COLS2).eq("kind", "writing").eq("status", "posted").is("answer_posted_at", null).not("answer", "is", null).order("posted_at").limit(3);
   const out: string[] = [];
   for (const c of (data ?? []) as unknown as Card[]) {
-    const r = await post(`✅ #${c.tag ?? "51"}쓰기 — namuna javob\n\n${c.answer}\n\n💡 Ma’nosi to‘g‘ri bo‘lsa, boshqa javob ham to‘g‘ri bo‘lishi mumkin. Javobingizni namuna bilan solishtiring!${SIGN}`, botBtn("channel"), c.message_id ?? undefined);
+    const r = await post(`✅ #${c.tag ?? "51"}쓰기 — namuna javob\n\n${c.answer}\n\n💡 Ma’nosi to‘g‘ri bo‘lsa, boshqa javob ham to‘g‘ri bo‘lishi mumkin. Javobingizni namuna bilan solishtiring!${SIGN}`, undefined, c.message_id ?? undefined);
     if (r.ok) await db().from("daily_cards").update({ answer_posted_at: new Date().toISOString() }).eq("id", c.id);
     out.push(r.ok ? `쓰기 정답 올림(#${c.id})` : `쓰기 정답 실패: ${r.description}`);
   }
@@ -78,8 +78,8 @@ async function postWritingAnswers(): Promise<string[]> {
 
 export async function postWriting(c: Card): Promise<string> {
   try {
-    const caption = `✍️ #${c.tag ?? "51"}쓰기 · Yozib ko‘ring!\n\n${c.body_uz || "㉠ va ㉡ o‘rniga mos javobni izohlarda yozing 👇"}\n\n✅ Namuna javob — keyingi yozish kuni shu postga javob sifatida.${SIGN}`;
-    const r = await sendPhoto(await renderWriting(c), caption.slice(0, 1024));
+    const caption = `✍️ #${c.tag ?? "51"}쓰기 · Yozib ko‘ring!\n\n${c.body_uz || "㉠ va ㉡ o‘rniga mos javobni izohlarda yozing 👇"}\n\n✅ Namuna javob keyingi yozish kunida kanalda chiqadi.${SIGN}`;
+    const r = await sendPhoto(await renderWriting(c), caption.slice(0, 1024), null); // 댓글로 답 받기 → 버튼 없음
     if (!r.ok) return `쓰기 연습 실패: ${r.description}`;
     await markPosted(c.id, r.result?.message_id);
     return `쓰기 연습 올림(#${c.id})`;
@@ -218,7 +218,7 @@ export async function postFun(c: Card): Promise<string> {
   } else if (tag === "food") {
     try {
       const caption = `🍜 O‘qish challenji · ${c.question ?? ""}\n\n${c.body_uz || "Menyuni ovoz chiqarib o‘qing va izohlarda 🎙 ovozli xabar qoldiring! Qaysi taomni buyurtma qilardingiz?"}${SIGN}`;
-      r = await sendPhoto(await renderFood(c), caption.slice(0, 1024));
+      r = await sendPhoto(await renderFood(c), caption.slice(0, 1024), null); // 댓글에 음성 → 버튼 없음
     } catch (e) { return `메뉴판 그림 실패: ${String(e).slice(0, 80)}`; }
   } else {
     const ex = (c.examples ?? []).map((x) => `📝 ${x.ko}\n— ${x.uz}`).join("\n");

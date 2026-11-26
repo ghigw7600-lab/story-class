@@ -86,12 +86,13 @@ const classButton = () => BOT_USERNAME
 // ───────── 올리기 ─────────
 export type TgRes = { ok: boolean; description?: string; result?: { message_id?: number } };
 
+// keyboard: 안 주면 수업 봇 버튼, null 이면 버튼 없음 (버튼이 있으면 텔레그램이 댓글 칸을 숨김)
 export async function sendPhoto(png: ArrayBuffer, caption: string, keyboard?: unknown): Promise<TgRes> {
   if (!BOT_TOKEN) return { ok: false, description: "BOT_TOKEN 없음" };
   const f = new FormData();
   f.set("chat_id", CHANNEL);
   f.set("caption", caption);
-  const kb = keyboard ?? classButton();
+  const kb = keyboard === null ? null : keyboard ?? classButton();
   if (kb) f.set("reply_markup", JSON.stringify(kb));
   f.set("photo", new Blob([png], { type: "image/png" }), "story-korean.png");
   try {

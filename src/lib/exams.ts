@@ -20,7 +20,7 @@ export const uzDate = (d: string) => { const [, m, day] = d.split("-").map(Numbe
 export const tashkentToday = () => new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10);
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10);
 
-type Btn = "class" | "consult";
+type Btn = "class" | "consult" | "none"; // none = 버튼 없음 → 댓글 칸이 보임
 export type Slot = "morning" | "afternoon" | "evening"; // 타슈켄트 10시 · 14시 · 20시
 type Msg = { trigger: string; label: string; date: string; text: string; btn: Btn; slot?: Slot; poll?: { question: string; options: string[] } };
 
@@ -48,10 +48,10 @@ export function plan(e: ExamEvent): Msg[] {
     text: `🍀 Bugun ${n} kuni!\n\n여러분, 모두 시험 잘 보세요! 💪\nShoshilmang, qiyin savolda ko‘p to‘xtamang — keyin qayting.` });
   // 시험 당일 실시간 (경쟁 채널 조회수 1위 시간대) — PBT는 TOPIK I·II 따로, IBT는 한 번
   const ibt = /ibt/i.test(n);
-  if (!ibt) out.push({ trigger: "d0_t1", label: "당일 · TOPIK I 어땠어요?", date: e.exam_date, slot: "afternoon", btn: "class",
+  if (!ibt) out.push({ trigger: "d0_t1", label: "당일 · TOPIK I 어땠어요?", date: e.exam_date, slot: "afternoon", btn: "none",
     text: `📝 ${n} — TOPIK I qanday o‘tdi?\n\nQaysi savollar qiyin bo‘ldi? 듣기 yoki 읽기? Izohlarda yozing 👇`,
     poll: { question: "TOPIK I qanday o‘tdi? 🤔", options: ["😎 Oson", "🙂 O‘rtacha", "😵 Qiyin", "😭 듣기 juda qiyin"] } });
-  out.push({ trigger: "d0_t2", label: ibt ? "당일 · 시험 어땠어요?" : "당일 · TOPIK II 어땠어요?", date: e.exam_date, slot: "evening", btn: "class",
+  out.push({ trigger: "d0_t2", label: ibt ? "당일 · 시험 어땠어요?" : "당일 · TOPIK II 어땠어요?", date: e.exam_date, slot: "evening", btn: "none",
     text: ibt
       ? `📝 ${n} qanday o‘tdi?\n\nQaysi qism qiyin bo‘ldi? Izohlarda yozing 👇`
       : `📝 ${n} — TOPIK II qanday o‘tdi?\n\n51–52 쓰기 ga nima deb yozdingiz? Javoblaringizni izohlarda yozing — birga tekshiramiz 👇`,
@@ -74,7 +74,7 @@ const button = (b: Btn) => b === "consult"
   : BOT_USERNAME ? { inline_keyboard: [[{ text: "📚 STORY Korean · TOPIK darslari", url: `https://t.me/${BOT_USERNAME}?start=channel` }]] } : undefined;
 
 export async function postExamMsg(e: ExamEvent, m: Msg): Promise<string> {
-  const r = (await tgCall("sendMessage", { chat_id: CHANNEL, text: m.text + SIGN, link_preview_options: { is_disabled: true }, reply_markup: button(m.btn) })) as { ok: boolean; description?: string; result?: { message_id?: number } };
+  const r = (await tgCall("sendMessage", { chat_id: CHANNEL, text: m.text + SIGN, link_preview_options: { is_disabled: true }, ...(m.btn === "none" ? {} : { reply_markup: button(m.btn) }) })) as { ok: boolean; description?: string; result?: { message_id?: number } };
   if (!r.ok) return `실패(${e.name} ${m.label}): ${r.description}`;
   if (m.poll) await tgCall("sendPoll", { chat_id: CHANNEL, question: m.poll.question, options: m.poll.options.map((text) => ({ text })), is_anonymous: true });
   await db().from("exam_posts").upsert({ event_id: e.id, trigger: m.trigger, message_id: r.result?.message_id ?? null }, { onConflict: "event_id,trigger" });
